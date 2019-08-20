@@ -3,14 +3,11 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/PuerkitoBio/goquery"
+	"github.com/oi-archive/crawler/plugin/public"
 	"io/ioutil"
 	"log"
-	"net/http"
-	"os"
 	"strconv"
 	"strings"
-	"time"
 )
 
 type lojExportProblem struct {
@@ -29,17 +26,6 @@ type lojExportProblem struct {
 		Type               string
 		Tags               []string
 	}
-}
-
-func exists(path string) bool {
-	_, err := os.Stat(path)
-	if err != nil {
-		if os.IsExist(err) {
-			return true
-		}
-		return false
-	}
-	return true
 }
 
 const homePath = "loj/"
@@ -63,24 +49,6 @@ type problemList []problemListItem
 
 var fileList map[string][]byte
 
-func writeProblemList(list problemList) error {
-	b, err := json.Marshal(list)
-	if err != nil {
-		return err
-	}
-	fileList[homePath+"problemlist.json"] = b
-	return nil
-}
-
-func writeMainJson(path string, p *problemListItem) error {
-	b, err := json.Marshal(p.data)
-	if err != nil {
-		return err
-	}
-	fileList[path] = b
-	return nil
-}
-
 func Name() string {
 	return "LibreOJ"
 }
@@ -90,42 +58,12 @@ func Start() error {
 	return nil
 }
 
-func safeGet(url string) (res *http.Response, err error) {
-	for i := 1; i <= 3; i++ {
-		res, err = http.Get(url)
-		if err != nil {
-			time.Sleep(time.Millisecond * 50)
-			continue
-		}
-		if res.StatusCode != 200 {
-			err = fmt.Errorf("get %s error,status code = %d", url, res.StatusCode)
-			time.Sleep(time.Millisecond * 50)
-			continue
-		}
-		return res, nil
-	}
-	return nil, err
-}
-
-func getDocument(url string) (*goquery.Document, error) {
-	res, err := safeGet(url)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		return nil, err
-	}
-	return doc, nil
-}
-
 /* 执行一次题库爬取
  * limit: 一次最多爬取题目数
  */
 func Update(limit int) (map[string][]byte, error) {
 	fileList = make(map[string][]byte)
-	problemPage, err := getDocument("https://loj.ac/problems")
+	problemPage, err := public.GetDocument("https://loj.ac/problems")
 	if err != nil {
 		return nil, err
 	}
@@ -148,10 +86,10 @@ func Update(limit int) (map[string][]byte, error) {
 	if maxPage <= 0 || maxPage >= 500 {
 		return nil, fmt.Errorf("maxPage value error: %d", maxPage)
 	}
-	maxPage = 1
+	maxPage = 2
 	newPList := make([]problemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
-		problemListPage, err := getDocument(fmt.Sprintf("https://loj.ac/problems?page=%d", i))
+		problemListPage, err := public.GetDocument(fmt.Sprintf("https://loj.ac/problems?page=%d", i))
 		if err != nil {
 			return nil, err
 		}
@@ -172,7 +110,7 @@ func Update(limit int) (map[string][]byte, error) {
 		i := &newPList[k]
 		log.Println("start getting problem ", i.Pid)
 		i.data = nil
-		res, err := safeGet(fmt.Sprintf("https://loj.ac/problem/%s/export", i.Pid))
+		res, err := public.SafeGet(fmt.Sprintf("https://loj.ac/problem/%s/export", i.Pid))
 		if err != nil {
 			continue
 		}
@@ -231,6 +169,11 @@ func Update(limit int) (map[string][]byte, error) {
 %s
 
 `, data.Obj.Description, data.Obj.InputFormat, data.Obj.OutputFormat, data.Obj.Example, data.Obj.LimitAndHint)
+		t, err := public.DownloadImage(i.data.description, "source/"+homePath+i.Pid+"/img/", fileList)
+		if err != nil {
+			continue
+		}
+		i.data.description = t
 	}
 	err = writeProblemList(newPList)
 	if err != nil {
@@ -253,4 +196,22 @@ func Update(limit int) (map[string][]byte, error) {
 
 func Stop() {
 	log.Println("LibreOJ crawler stopped")
+}
+
+func writeProblemList(list problemList) error {
+	b, err := json.Marshal(list)
+	if err != nil {
+		return err
+	}
+	fileList[homePath+"problemlist.json"] = b
+	return nil
+}
+
+func writeMainJson(path string, p *problemListItem) error {
+	b, err := json.Marshal(p.data)
+	if err != nil {
+		return err
+	}
+	fileList[path] = b
+	return nil
 }
