@@ -169,7 +169,7 @@ func Update(limit int) (map[string][]byte, error) {
 %s
 
 `, data.Obj.Description, data.Obj.InputFormat, data.Obj.OutputFormat, data.Obj.Example, data.Obj.LimitAndHint)
-		t, err := public.DownloadImage(i.data.description, homePath+i.Pid+"/img/", fileList)
+		t, err := public.DownloadImage(i.data.description, homePath+i.Pid+"/img/", fileList, "https://loj.ac/problem/"+i.Pid+"/")
 		if err != nil {
 			continue
 		}
