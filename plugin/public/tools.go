@@ -72,9 +72,9 @@ func DownloadImage(text string, prefix string, fileList map[string][]byte) (stri
 			return x
 		}
 		b64 := base64.URLEncoding.EncodeToString([]byte(match))
-		path := "source/" + prefix + b64 + "." + getFileExtension(match)
+		path := prefix + b64 + "." + getFileExtension(match)
 		fileList[path] = file
-		return r2.ReplaceAllString(x, "("+path+")")
+		return r2.ReplaceAllString(x, "(source/"+path+")")
 	})
 	rule = regexp.MustCompile(`<img[^>]+src\s*=\s*['"]([^'"]+)['"][^>]*>`)
 	r2 = regexp.MustCompile(`['"][^'"]+['"]`)
@@ -88,9 +88,9 @@ func DownloadImage(text string, prefix string, fileList map[string][]byte) (stri
 			return x
 		}
 		b64 := base64.URLEncoding.EncodeToString([]byte(match))
-		path := "source/" + prefix + b64 + "." + getFileExtension(match)
+		path := prefix + b64 + "." + getFileExtension(match)
 		fileList[path] = file
-		return r2.ReplaceAllString(x, `"`+path+`"`)
+		return r2.ReplaceAllString(x, `"source/`+path+`"`)
 	})
 	return text, nil
 }
