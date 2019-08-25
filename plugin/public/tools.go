@@ -18,12 +18,13 @@ import (
 )
 
 type Problem struct {
-	Time        int    `json:"time"`
-	Memory      int    `json:"memory"`
-	Title       string `json:"title"`
-	Judge       string `json:"judge"`
-	Url         string `json:"url"`
-	Description string `json:"-"`
+	Time            int    `json:"time"`
+	Memory          int    `json:"memory"`
+	Title           string `json:"title"`
+	Judge           string `json:"judge"`
+	Url             string `json:"url"`
+	Description     string `json:"-"`
+	DescriptionType string `json:"description_type"`
 }
 
 type ProblemListItem struct {

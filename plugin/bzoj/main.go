@@ -141,6 +141,7 @@ func Update(limit int) (map[string][]byte, error) {
 			continue
 		}
 		i.Data = &public.Problem{}
+		i.Data.DescriptionType = "html"
 		i.Data.Time, err = strconv.Atoi(strings.Split(page.Find(`body > center:nth-child(3) > span:nth-child(2)`).Nodes[0].NextSibling.Data, " ")[0])
 		i.Data.Time *= 1000
 		if err != nil {
@@ -188,7 +189,7 @@ func Update(limit int) (map[string][]byte, error) {
 %s
 
 `, node2html(t[0]), node2html(t[1]), node2html(t[2]), node2html(t[3]), node2html(t[4]), node2html(t[5]), node2html(t[6]))
-		d2, err := public.DownloadImage(c, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://lydsy.com/JudgeOnline/", "https://lydsy.com/")
+		d2, err := public.DownloadImage(c, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://lydsy.com/JudgeOnline/", "https://lydsy.com")
 		if err == nil {
 			i.Data.Description = d2
 		}

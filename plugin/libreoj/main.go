@@ -111,6 +111,7 @@ func Update(limit int) (map[string][]byte, error) {
 			continue
 		}
 		i.Data = &public.Problem{}
+		i.Data.DescriptionType = "markdown"
 		i.Data.Title = i.Title
 		i.Data.Time = data.Obj.TimeLimit
 		i.Data.Memory = data.Obj.MemoryLimit
@@ -152,7 +153,7 @@ func Update(limit int) (map[string][]byte, error) {
 %s
 
 `, data.Obj.Description, data.Obj.InputFormat, data.Obj.OutputFormat, data.Obj.Example, data.Obj.LimitAndHint)
-		t, err := public.DownloadImage(nil, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://loj.ac/problem/"+i.Pid+"/", "https://loj.ac/")
+		t, err := public.DownloadImage(nil, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://loj.ac/problem/"+i.Pid+"/", "https://loj.ac")
 		if err == nil {
 			i.Data.Description = t
 		}
