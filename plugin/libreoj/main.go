@@ -30,23 +30,6 @@ type lojExportProblem struct {
 
 const homePath = "loj/"
 
-type problem struct {
-	Time        int    `json:"time"`
-	Memory      int    `json:"memory"`
-	Title       string `json:"title"`
-	Judge       string `json:"judge"`
-	Url         string `json:"url"`
-	description string
-}
-
-type problemListItem struct {
-	Title string `json:"title"`
-	Pid   string `json:"pid"`
-	data  *problem
-}
-
-type problemList []problemListItem
-
 var fileList map[string][]byte
 
 func Name() string {
@@ -63,7 +46,7 @@ func Start() error {
  */
 func Update(limit int) (map[string][]byte, error) {
 	fileList = make(map[string][]byte)
-	problemPage, err := public.GetDocument("https://loj.ac/problems")
+	problemPage, err := public.GetDocument(nil, "https://loj.ac/problems")
 	if err != nil {
 		return nil, err
 	}
@@ -73,7 +56,7 @@ func Update(limit int) (map[string][]byte, error) {
 		for i := range list.Eq(0).Nodes {
 			//tt:=list.Eq(i).Text()
 			for _, j := range strings.Split(list.Eq(i).Text(), "\n") {
-				t, err := strconv.Atoi(j)
+				t, err := strconv.Atoi(strings.Trim(j, " "))
 				if err != nil {
 					continue
 				}
@@ -87,15 +70,15 @@ func Update(limit int) (map[string][]byte, error) {
 		return nil, fmt.Errorf("maxPage value error: %d", maxPage)
 	}
 	maxPage = 2
-	newPList := make([]problemListItem, 0)
+	newPList := make([]public.ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
-		problemListPage, err := public.GetDocument(fmt.Sprintf("https://loj.ac/problems?page=%d", i))
+		problemListPage, err := public.GetDocument(nil, fmt.Sprintf("https://loj.ac/problems?page=%d", i))
 		if err != nil {
 			return nil, err
 		}
 		list := problemListPage.Find(`[style="vertical-align: middle; "]`)
 		for j := range list.Nodes {
-			p := problemListItem{Title: strings.Replace(list.Eq(j).Text(), "\n", "", -1)}
+			p := public.ProblemListItem{Title: strings.Replace(list.Eq(j).Text(), "\n", "", -1)}
 			node := list.Nodes[j]
 			for _, k := range node.Attr {
 				if k.Key == "href" {
@@ -109,8 +92,8 @@ func Update(limit int) (map[string][]byte, error) {
 	for k := range newPList {
 		i := &newPList[k]
 		log.Println("start getting problem ", i.Pid)
-		i.data = nil
-		res, err := public.SafeGet(fmt.Sprintf("https://loj.ac/problem/%s/export", i.Pid))
+		i.Data = nil
+		res, err := public.SafeGet(nil, fmt.Sprintf("https://loj.ac/problem/%s/export", i.Pid))
 		if err != nil {
 			continue
 		}
@@ -127,26 +110,26 @@ func Update(limit int) (map[string][]byte, error) {
 		if !data.Success {
 			continue
 		}
-		i.data = &problem{}
-		i.data.Title = i.Title
-		i.data.Time = data.Obj.TimeLimit
-		i.data.Memory = data.Obj.MemoryLimit
-		i.data.Url = "https://loj.ac/problem/" + i.Pid
+		i.Data = &public.Problem{}
+		i.Data.Title = i.Title
+		i.Data.Time = data.Obj.TimeLimit
+		i.Data.Memory = data.Obj.MemoryLimit
+		i.Data.Url = "https://loj.ac/problem/" + i.Pid
 		switch data.Obj.Type {
 		case "traditional":
-			i.data.Judge = "传统"
+			i.Data.Judge = "传统"
 		case "submit-answer":
-			i.data.Judge = "提交答案"
+			i.Data.Judge = "提交答案"
 		case "interaction":
-			i.data.Judge = "交互"
+			i.Data.Judge = "交互"
 		}
 		for _, k := range data.Obj.Tags {
 			if k == "Special Judge" {
-				i.data.Judge += " Special Judge"
+				i.Data.Judge += " Special Judge"
 				break
 			}
 		}
-		i.data.description = fmt.Sprintf(
+		i.Data.Description = fmt.Sprintf(
 			`
 # 题目描述
 
@@ -169,49 +152,18 @@ func Update(limit int) (map[string][]byte, error) {
 %s
 
 `, data.Obj.Description, data.Obj.InputFormat, data.Obj.OutputFormat, data.Obj.Example, data.Obj.LimitAndHint)
-		t, err := public.DownloadImage(i.data.description, homePath+i.Pid+"/img/", fileList, "https://loj.ac/problem/"+i.Pid+"/")
-		if err != nil {
-			continue
+		t, err := public.DownloadImage(nil, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://loj.ac/problem/"+i.Pid+"/", "https://loj.ac/")
+		if err == nil {
+			i.Data.Description = t
 		}
-		i.data.description = t
 	}
-	err = writeProblemList(newPList)
+	err = public.WriteFiles(newPList, fileList, homePath)
 	if err != nil {
 		return nil, err
-	}
-	for _, i := range newPList {
-		if i.data == nil {
-			continue
-		}
-		nowPath := homePath + i.Pid + "/"
-		err = writeMainJson(nowPath+"main.json", &i)
-		if err != nil {
-			log.Println(err)
-			continue
-		}
-		fileList[nowPath+"description.md"] = []byte(i.data.description)
 	}
 	return fileList, nil
 }
 
 func Stop() {
 	log.Println("LibreOJ crawler stopped")
-}
-
-func writeProblemList(list problemList) error {
-	b, err := json.Marshal(list)
-	if err != nil {
-		return err
-	}
-	fileList[homePath+"problemlist.json"] = b
-	return nil
-}
-
-func writeMainJson(path string, p *problemListItem) error {
-	b, err := json.Marshal(p.data)
-	if err != nil {
-		return err
-	}
-	fileList[path] = b
-	return nil
 }

@@ -149,6 +149,7 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
+	log.Println("插件载入完成")
 	for _, p := range P {
 		err := try(p.Lookup("Start")).(func() error)()
 		if err != nil {

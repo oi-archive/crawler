@@ -5,20 +5,45 @@ package public
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"time"
 )
 
+type Problem struct {
+	Time        int    `json:"time"`
+	Memory      int    `json:"memory"`
+	Title       string `json:"title"`
+	Judge       string `json:"judge"`
+	Url         string `json:"url"`
+	Description string `json:"-"`
+}
+
+type ProblemListItem struct {
+	Title string   `json:"title"`
+	Pid   string   `json:"pid"`
+	Data  *Problem `json:"-"`
+}
+
+type ProblemList []ProblemListItem
+
+type FileList map[string][]byte
+
 // SafeGet 是 http.Get 的简单封装，会在产生错误时重试 2 次，若重试全部失败，则返回最后一次的错误
-func SafeGet(url string) (res *http.Response, err error) {
+func SafeGet(c *http.Client, url string) (res *http.Response, err error) {
 	for i := 1; i <= 3; i++ {
-		res, err = http.Get(url)
+		if c == nil {
+			res, err = http.Get(url)
+		} else {
+			res, err = c.Get(url)
+		}
 		if err != nil {
 			time.Sleep(time.Millisecond * 50)
 			continue
@@ -33,9 +58,36 @@ func SafeGet(url string) (res *http.Response, err error) {
 	return nil, err
 }
 
+// SafePost 是 http.Post 的简单封装，会在产生错误时重试 2 次，若重试全部失败，则返回最后一次的错误
+func SafePost(c *http.Client, url string, form url.Values) (res *http.Response, err error) {
+	for i := 1; i <= 3; i++ {
+		res, err = c.PostForm(url, form)
+		if err != nil {
+			time.Sleep(time.Millisecond * 50)
+			continue
+		}
+		if res.StatusCode != 200 {
+			err = fmt.Errorf("post %s error,status code = %d", url, res.StatusCode)
+			time.Sleep(time.Millisecond * 50)
+			continue
+		}
+		return res, nil
+	}
+	return nil, err
+}
+
 // Download 用于下载一个 url 中的内容
-func Download(url string) ([]byte, error) {
-	res, err := SafeGet(url)
+func Download(c *http.Client, url string) ([]byte, error) {
+	res, err := SafeGet(c, url)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	return ioutil.ReadAll(res.Body)
+}
+
+func PostAndRead(c *http.Client, url string, form url.Values) ([]byte, error) {
+	res, err := SafePost(c, url, form)
 	if err != nil {
 		return nil, err
 	}
@@ -44,8 +96,8 @@ func Download(url string) ([]byte, error) {
 }
 
 // 返回输入 url 的 goquery.Document
-func GetDocument(url string) (*goquery.Document, error) {
-	res, err := SafeGet(url)
+func GetDocument(c *http.Client, url string) (*goquery.Document, error) {
+	res, err := SafeGet(c, url)
 	if err != nil {
 		return nil, err
 	}
@@ -75,19 +127,24 @@ func IsUrl(url string) bool {
 }
 
 // 解析文档中的图片，下载后保存至 fileList 中。
-// text: 待解析的文档; prefix: 文件系统路径前缀;
-// fileList: 文件表; url: 文档链接，用于相对路径的处理，若不需要则置空
+// c http实例，不需要可置nil; text: 待解析的文档; prefix: 文件系统路径前缀;
+// fileList: 文件表; url1,url2: 文档链接和域名链接，用于相对路径的处理，若不需要则置空
 // 返回替换图片链接后的文档
-func DownloadImage(text string, prefix string, fileList map[string][]byte, url string) (string, error) {
-	rule := regexp.MustCompile(`!\[.*?]\(.+?\)`)
+func DownloadImage(c *http.Client, text string, prefix string, fileList map[string][]byte, url1 string, url2 string) (string, error) {
+	rule := regexp.MustCompile(`!\[.*?]\((.+?)\)`)
 	r2 := regexp.MustCompile(`\(.+?\)`)
 	text = rule.ReplaceAllStringFunc(text, func(x string) string {
 		match := r2.FindString(x)
 		match = match[1 : len(match)-1]
-		file, err := Download(match)
+		file, err := Download(c, match)
 		if err != nil {
-			match = url + match
-			file, err = Download(match)
+			if url1 != "" && match[0] != '/' {
+				match = url1 + match
+				file, err = Download(c, match)
+			} else if url2 != "" && match[0] == '/' {
+				match = url2 + match
+				file, err = Download(c, match)
+			}
 			if err != nil {
 				log.Printf("download image %s error", match)
 				return x
@@ -99,15 +156,22 @@ func DownloadImage(text string, prefix string, fileList map[string][]byte, url s
 		return r2.ReplaceAllString(x, "(source/"+path+")")
 	})
 	rule = regexp.MustCompile(`<img[^>]+src\s*=\s*['"]([^'"]+)['"][^>]*>`)
-	r2 = regexp.MustCompile(`['"][^'"]+['"]`)
+	r2 = regexp.MustCompile(`src\s*=\s*['"]([^'"]+)['"]`)
+	r3 := regexp.MustCompile(`['"]([^'"]+)['"]`)
 	text = rule.ReplaceAllStringFunc(text, func(x string) string {
 		//log.Println(x)
-		match := r2.FindString(x)
+		match2 := r2.FindString(x)
+		match := r3.FindString(match2)
 		match = match[1 : len(match)-1]
-		file, err := Download(match)
+		file, err := Download(c, match)
 		if err != nil {
-			match = url + match
-			file, err = Download(match)
+			if url1 != "" && match[0] != '/' {
+				match = url1 + match
+				file, err = Download(c, match)
+			} else if url2 != "" && match[0] == '/' {
+				match = url2 + match
+				file, err = Download(c, match)
+			}
 			if err != nil {
 				log.Printf("download image %s error", match)
 				return x
@@ -116,7 +180,48 @@ func DownloadImage(text string, prefix string, fileList map[string][]byte, url s
 		b64 := base64.URLEncoding.EncodeToString([]byte(match))
 		path := prefix + b64 + "." + getFileExtension(match)
 		fileList[path] = file
-		return r2.ReplaceAllString(x, `"source/`+path+`"`)
+		return r2.ReplaceAllString(x, r3.ReplaceAllString(match2, `"source/`+path+`"`))
 	})
 	return text, nil
+}
+
+// 向文件表写入 problemlist
+func WriteProblemList(list ProblemList, fileList FileList, homePath string) error {
+	b, err := json.Marshal(list)
+	if err != nil {
+		return err
+	}
+	fileList[homePath+"problemlist.json"] = b
+	return nil
+}
+
+// 向文件表写入 main.json
+func WriteMainJson(path string, p *ProblemListItem, fileList FileList) error {
+	b, err := json.Marshal(p.Data)
+	if err != nil {
+		return err
+	}
+	fileList[path] = b
+	return nil
+}
+
+// 向文件表写入文件
+func WriteFiles(pList ProblemList, fileList FileList, homePath string) error {
+	err := WriteProblemList(pList, fileList, homePath)
+	if err != nil {
+		return err
+	}
+	for _, i := range pList {
+		if i.Data == nil {
+			continue
+		}
+		nowPath := homePath + i.Pid + "/"
+		err = WriteMainJson(nowPath+"main.json", &i, fileList)
+		if err != nil {
+			log.Println(err)
+			continue
+		}
+		fileList[nowPath+"description.md"] = []byte(i.Data.Description)
+	}
+	return nil
 }
