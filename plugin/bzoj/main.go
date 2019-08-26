@@ -57,7 +57,15 @@ func newAddUATransport(T http.RoundTripper) *addUATransport {
 	return &addUATransport{T}
 }
 
+var oldPList map[string]bool
+var lastPoint string
+
 func Start() error {
+	err := public.InitPList(oldPList, homePath)
+	if err != nil {
+		return err
+	}
+	lastPoint = ""
 	b, err := ioutil.ReadFile("./config/bzoj")
 	if err != nil {
 		return err
@@ -104,7 +112,9 @@ func Update(limit int) (map[string][]byte, error) {
 			}
 		}
 	}
-	maxPage = 2
+	if maxPage <= 0 || maxPage >= 500 {
+		return nil, fmt.Errorf("maxPage error: %d", maxPage)
+	}
 	newPList := make([]public.ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
 		problemListPage, err := public.GetDocument(c, fmt.Sprintf("https://lydsy.com/JudgeOnline/problemset.php?page=%d", i))
@@ -126,19 +136,18 @@ func Update(limit int) (map[string][]byte, error) {
 			newPList = append(newPList, p)
 		})
 	}
-	for k := range newPList {
-		i := &newPList[k]
+	lastPoint = public.DownloadProblems(newPList, oldPList, limit, lastPoint, func(i *public.ProblemListItem) error {
 		log.Println("start getting problem ", i.Pid)
 		i.Data = nil
 		page, err := public.GetDocument(c, `https://lydsy.com/JudgeOnline/problem.php?id=`+i.Pid)
 		if err != nil {
 			log.Printf("解析题目%s时产生错误：下载题面失败", i.Pid)
-			continue
+			return err
 		}
 		t := page.Find(".content").Nodes
 		if len(t) < 7 {
 			log.Printf("解析题目%s时产生错误：无法获取conetnt对象", i.Pid)
-			continue
+			return err
 		}
 		i.Data = &public.Problem{}
 		i.Data.DescriptionType = "html"
@@ -193,7 +202,8 @@ func Update(limit int) (map[string][]byte, error) {
 		if err == nil {
 			i.Data.Description = d2
 		}
-	}
+		return nil
+	})
 	err = public.WriteFiles(newPList, fileList, homePath)
 	if err != nil {
 		return nil, err

@@ -226,3 +226,53 @@ func WriteFiles(pList ProblemList, fileList FileList, homePath string) error {
 	}
 	return nil
 }
+
+func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int, lastPoint string, getProblem func(*ProblemListItem) error) string {
+	cnt := 0
+	for k := range newPList {
+		i := &newPList[k]
+		if _, ok := oldPList[i.Pid]; !ok {
+			cnt++
+			err := getProblem(i)
+			if err != nil {
+				log.Printf("爬取题目%s时出现错误:%v", i.Pid, err)
+			}
+		}
+	}
+	start := 0
+	for k := range newPList {
+		if newPList[k].Pid == lastPoint {
+			start = k
+			break
+		}
+	}
+	for k := start + 1; cnt < limit && k != start; k++ {
+		if k >= len(newPList) {
+			k = 0
+		}
+		i := &newPList[k]
+		cnt++
+		err := getProblem(i)
+		if err != nil {
+			log.Printf("爬取题目%s时出现错误:%v", i.Pid, err)
+		}
+	}
+	return lastPoint
+}
+
+func InitPList(oldPList map[string]bool, homePath string) error {
+	oldPList = make(map[string]bool)
+	b, err := ioutil.ReadFile("../source/" + homePath + "problemlist.json")
+	if err != nil {
+		return err
+	}
+	x := ProblemList{}
+	err = json.Unmarshal(b, &x)
+	if err != nil {
+		return err
+	}
+	for _, i := range x {
+		oldPList[i.Pid] = true
+	}
+	return nil
+}

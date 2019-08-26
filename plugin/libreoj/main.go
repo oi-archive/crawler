@@ -32,11 +32,19 @@ const homePath = "loj/"
 
 var fileList map[string][]byte
 
+var oldPList map[string]bool
+var lastPoint string
+
 func Name() string {
 	return "LibreOJ"
 }
 
 func Start() error {
+	err := public.InitPList(oldPList, homePath)
+	if err != nil {
+		return err
+	}
+	lastPoint = ""
 	log.Println("LibreOJ crawler started")
 	return nil
 }
@@ -67,9 +75,8 @@ func Update(limit int) (map[string][]byte, error) {
 		}
 	}
 	if maxPage <= 0 || maxPage >= 500 {
-		return nil, fmt.Errorf("maxPage value error: %d", maxPage)
+		return nil, fmt.Errorf("maxPage error: %d", maxPage)
 	}
-	maxPage = 2
 	newPList := make([]public.ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
 		problemListPage, err := public.GetDocument(nil, fmt.Sprintf("https://loj.ac/problems?page=%d", i))
@@ -89,49 +96,64 @@ func Update(limit int) (map[string][]byte, error) {
 			newPList = append(newPList, p)
 		}
 	}
-	for k := range newPList {
-		i := &newPList[k]
-		log.Println("start getting problem ", i.Pid)
-		i.Data = nil
-		res, err := public.SafeGet(nil, fmt.Sprintf("https://loj.ac/problem/%s/export", i.Pid))
-		if err != nil {
-			continue
+	lastPoint = public.DownloadProblems(newPList, oldPList, limit, lastPoint, getProblem)
+	err = public.WriteFiles(newPList, fileList, homePath)
+	if err != nil {
+		return nil, err
+	}
+	oldPList = make(map[string]bool)
+	for _, i := range newPList {
+		oldPList[i.Pid] = true
+	}
+	return fileList, nil
+}
+
+func Stop() {
+	log.Println("LibreOJ crawler stopped")
+}
+
+func getProblem(i *public.ProblemListItem) error {
+	log.Println("start getting problem ", i.Pid)
+	i.Data = nil
+	res, err := public.SafeGet(nil, fmt.Sprintf("https://loj.ac/problem/%s/export", i.Pid))
+	if err != nil {
+		return err
+	}
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return err
+	}
+	res.Body.Close()
+	data := &lojExportProblem{}
+	err = json.Unmarshal(b, data)
+	if err != nil {
+		return err
+	}
+	if !data.Success {
+		return err
+	}
+	i.Data = &public.Problem{}
+	i.Data.DescriptionType = "markdown"
+	i.Data.Title = i.Title
+	i.Data.Time = data.Obj.TimeLimit
+	i.Data.Memory = data.Obj.MemoryLimit
+	i.Data.Url = "https://loj.ac/problem/" + i.Pid
+	switch data.Obj.Type {
+	case "traditional":
+		i.Data.Judge = "传统"
+	case "submit-answer":
+		i.Data.Judge = "提交答案"
+	case "interaction":
+		i.Data.Judge = "交互"
+	}
+	for _, k := range data.Obj.Tags {
+		if k == "Special Judge" {
+			i.Data.Judge += " Special Judge"
+			break
 		}
-		b, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			continue
-		}
-		res.Body.Close()
-		data := &lojExportProblem{}
-		err = json.Unmarshal(b, data)
-		if err != nil {
-			continue
-		}
-		if !data.Success {
-			continue
-		}
-		i.Data = &public.Problem{}
-		i.Data.DescriptionType = "markdown"
-		i.Data.Title = i.Title
-		i.Data.Time = data.Obj.TimeLimit
-		i.Data.Memory = data.Obj.MemoryLimit
-		i.Data.Url = "https://loj.ac/problem/" + i.Pid
-		switch data.Obj.Type {
-		case "traditional":
-			i.Data.Judge = "传统"
-		case "submit-answer":
-			i.Data.Judge = "提交答案"
-		case "interaction":
-			i.Data.Judge = "交互"
-		}
-		for _, k := range data.Obj.Tags {
-			if k == "Special Judge" {
-				i.Data.Judge += " Special Judge"
-				break
-			}
-		}
-		i.Data.Description = fmt.Sprintf(
-			`
+	}
+	i.Data.Description = fmt.Sprintf(
+		`
 # 题目描述
 
 %s
@@ -153,18 +175,9 @@ func Update(limit int) (map[string][]byte, error) {
 %s
 
 `, data.Obj.Description, data.Obj.InputFormat, data.Obj.OutputFormat, data.Obj.Example, data.Obj.LimitAndHint)
-		t, err := public.DownloadImage(nil, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://loj.ac/problem/"+i.Pid+"/", "https://loj.ac")
-		if err == nil {
-			i.Data.Description = t
-		}
+	t, err := public.DownloadImage(nil, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://loj.ac/problem/"+i.Pid+"/", "https://loj.ac")
+	if err == nil {
+		i.Data.Description = t
 	}
-	err = public.WriteFiles(newPList, fileList, homePath)
-	if err != nil {
-		return nil, err
-	}
-	return fileList, nil
-}
-
-func Stop() {
-	log.Println("LibreOJ crawler stopped")
+	return nil
 }
