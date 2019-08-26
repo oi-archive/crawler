@@ -40,6 +40,7 @@ func Name() string {
 }
 
 func Start() error {
+	oldPList = make(map[string]bool)
 	err := public.InitPList(oldPList, homePath)
 	if err != nil {
 		return err

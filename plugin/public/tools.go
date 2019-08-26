@@ -263,7 +263,6 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 }
 
 func InitPList(oldPList map[string]bool, homePath string) error {
-	oldPList = make(map[string]bool)
 	b, err := ioutil.ReadFile("../source/" + homePath + "problemlist.json")
 	if err != nil {
 		return err
