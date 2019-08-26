@@ -76,6 +76,17 @@ func addFileAndCommit(fileList map[string][]byte, problemsetName string) error {
 	return nil
 }
 
+func gitPush() error {
+	remote, err := gitRepo.Remotes.Lookup("origin")
+	if err != nil {
+		return err
+	}
+	err = remote.Push([]string{"refs/heads/master"}, nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 func runUpdate() {
 	for _, p := range P {
 		pName := try(p.Lookup("Name")).(func() string)()
@@ -98,6 +109,11 @@ func runUpdate() {
 			err = gitRepo.ResetToCommit(currentTip, git.ResetHard, &git.CheckoutOpts{})
 			if err != nil {
 				log.Panicln("git error:", err)
+			}
+		} else {
+			err = gitPush()
+			if err != nil {
+				log.Println("git push error:", err)
 			}
 		}
 		log.Println("Updated " + pName)
