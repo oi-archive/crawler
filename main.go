@@ -79,7 +79,7 @@ func addFileAndCommit(fileList map[string][]byte, problemsetName string) error {
 func runUpdate() {
 	for _, p := range P {
 		pName := try(p.Lookup("Name")).(func() string)()
-		fileList, err := try(p.Lookup("Update")).(func(int) (map[string][]byte, error))(114514)
+		fileList, err := try(p.Lookup("Update")).(func(int) (map[string][]byte, error))(200)
 		if err != nil {
 			log.Printf(`call "Update" error in plugin %s: %v\n`, pName, err)
 			continue

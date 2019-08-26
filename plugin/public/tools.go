@@ -39,6 +39,7 @@ type FileList map[string][]byte
 
 // SafeGet 是 http.Get 的简单封装，会在产生错误时重试 2 次，若重试全部失败，则返回最后一次的错误
 func SafeGet(c *http.Client, url string) (res *http.Response, err error) {
+	time.Sleep(50 * time.Millisecond)
 	for i := 1; i <= 3; i++ {
 		if c == nil {
 			res, err = http.Get(url)
@@ -61,6 +62,7 @@ func SafeGet(c *http.Client, url string) (res *http.Response, err error) {
 
 // SafePost 是 http.Post 的简单封装，会在产生错误时重试 2 次，若重试全部失败，则返回最后一次的错误
 func SafePost(c *http.Client, url string, form url.Values) (res *http.Response, err error) {
+	time.Sleep(50 * time.Millisecond)
 	for i := 1; i <= 3; i++ {
 		res, err = c.PostForm(url, form)
 		if err != nil {
