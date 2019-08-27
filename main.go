@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/robfig/cron"
 	"gopkg.in/libgit2/git2go.v26"
+	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,6 +15,13 @@ import (
 
 var P []*plugin.Plugin
 var gitRepo *git.Repository
+
+type Sshkey struct {
+	Public_key  string
+	Private_key string
+}
+
+var sshkey Sshkey
 
 func try(x interface{}, err error) interface{} {
 	return x
@@ -84,8 +93,12 @@ func gitPush() error {
 	err = remote.Push([]string{"refs/heads/master"}, &git.PushOptions{
 		RemoteCallbacks: git.RemoteCallbacks{
 			CredentialsCallback: func(url string, username_from_url string, allowed_types git.CredType) (git.ErrorCode, *git.Cred) {
-				ret, cred := git.NewCredSshKey("git", "~/.ssh/id_rsa.pub", "~/.ssh/id_rsa", "")
+				ret, cred := git.NewCredSshKey("git", sshkey.Public_key, sshkey.Private_key, "")
 				return git.ErrorCode(ret), &cred
+			},
+			CertificateCheckCallback: func(cert *git.Certificate, valid bool, hostname string) git.ErrorCode {
+				// 忽略服务端证书错误
+				return git.ErrorCode(0)
 			},
 		},
 	})
@@ -183,7 +196,14 @@ func main() {
 	if err != nil {
 		log.Panicln(err)
 	}
-
+	b, err := ioutil.ReadFile("config/sshkey.json")
+	if err != nil {
+		log.Panicln(err)
+	}
+	err = json.Unmarshal(b, &sshkey)
+	if err != nil {
+		log.Panicln(err)
+	}
 	runUpdate()
 	c := cron.New()
 	_ = c.AddFunc("@midnight", runUpdate)

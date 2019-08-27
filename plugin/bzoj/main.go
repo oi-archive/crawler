@@ -67,7 +67,7 @@ func Start() error {
 		return err
 	}
 	lastPoint = ""
-	b, err := ioutil.ReadFile("./config/bzoj")
+	b, err := ioutil.ReadFile("./config/bzoj.json")
 	if err != nil {
 		return err
 	}
