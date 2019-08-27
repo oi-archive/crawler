@@ -81,7 +81,14 @@ func gitPush() error {
 	if err != nil {
 		return err
 	}
-	err = remote.Push([]string{"refs/heads/master"}, nil)
+	err = remote.Push([]string{"refs/heads/master"}, &git.PushOptions{
+		RemoteCallbacks: git.RemoteCallbacks{
+			CredentialsCallback: func(url string, username_from_url string, allowed_types git.CredType) (git.ErrorCode, *git.Cred) {
+				ret, cred := git.NewCredSshKey("git", "~/.ssh/id_rsa.pub", "~/.ssh/id_rsa", "")
+				return git.ErrorCode(ret), &cred
+			},
+		},
+	})
 	if err != nil {
 		return err
 	}
