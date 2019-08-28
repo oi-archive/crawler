@@ -108,7 +108,6 @@ func Update(limit int) (public.FileList, error) {
 		})
 		rule = regexp.MustCompile(`时间限制(?:</strong>)*：(?:</strong>)*\$(.+?)\\texttt{s}\$`)
 		match := rule.FindStringSubmatch(html)
-		logger.Println(len(match))
 		if len(match) > 0 {
 			t := match[1]
 			t = strings.Trim(t, " ")
@@ -119,7 +118,6 @@ func Update(limit int) (public.FileList, error) {
 		}
 		rule = regexp.MustCompile(`(?:空间|内存)限制(?:</strong>)*：(?:</strong>)*\$(.+?)\\texttt{([MG])B}\$`)
 		match = rule.FindStringSubmatch(html)
-		logger.Println(len(match))
 		if len(match) > 0 {
 			t := match[1]
 			t = strings.Trim(t, " ")
@@ -133,6 +131,10 @@ func Update(limit int) (public.FileList, error) {
 			}
 		}
 		p.Data.Description = "# 题目描述\n\n" + html
+		t, err := public.DownloadImage(nil, p.Data.Description, homePath+p.Pid+"/img/", fileList, "http://uoj.ac/problem/"+p.Pid+"/", "http://uoj.ac")
+		if err == nil {
+			p.Data.Description = t
+		}
 		p.Data.Title = p.Title
 		p.Data.Url = "http://uoj.ac/problem/" + p.Pid
 		p.Data.DescriptionType = "html"

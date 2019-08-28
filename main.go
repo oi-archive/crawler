@@ -213,6 +213,7 @@ func main() {
 			Log.Panicf(`call "Start" error in plugin %s: %v\n`, try(p.Lookup("Name")).(func() string)(), err)
 		}
 	}
+	log.Println("插件启动完成")
 	gitRepo, err = git.OpenRepository("../source")
 	if err != nil {
 		Log.Panicln(err)

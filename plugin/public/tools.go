@@ -5,6 +5,7 @@ package public
 
 import (
 	"bytes"
+	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -131,6 +132,11 @@ func IsUrl(url string) bool {
 	return urlRule.MatchString(url)
 }
 
+func CalcMD5(x string) string {
+	h := md5.Sum([]byte(x))
+	return fmt.Sprintf("%x", h)
+}
+
 // 解析文档中的图片，下载后保存至 fileList 中。
 // c http实例，不需要可置nil; text: 待解析的文档; prefix: 文件系统路径前缀;
 // fileList: 文件表; url1,url2: 文档链接和域名链接，用于相对路径的处理，若不需要则置空
@@ -156,6 +162,9 @@ func DownloadImage(c *http.Client, text string, prefix string, fileList map[stri
 			}
 		}
 		b64 := base64.URLEncoding.EncodeToString([]byte(match))
+		if len(b64) > 240 {
+			b64 = CalcMD5(b64)
+		}
 		path := prefix + b64 + "." + getFileExtension(match)
 		fileList[path] = file
 		return r2.ReplaceAllString(x, "(source/"+path+")")
@@ -183,6 +192,9 @@ func DownloadImage(c *http.Client, text string, prefix string, fileList map[stri
 			}
 		}
 		b64 := base64.URLEncoding.EncodeToString([]byte(match))
+		if len(b64) > 240 {
+			b64 = CalcMD5(b64)
+		}
 		path := prefix + b64 + "." + getFileExtension(match)
 		fileList[path] = file
 		return r2.ReplaceAllString(x, r3.ReplaceAllString(match2, `"source/`+path+`"`))
