@@ -1,4 +1,4 @@
-package main
+package syzoj
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-type lojExportProblem struct {
+type syzojExportProblem struct {
 	Success bool
 	Obj     struct {
 		Title              string
@@ -28,7 +28,9 @@ type lojExportProblem struct {
 	}
 }
 
-const homePath = "loj/"
+var homePath string
+var fullName string
+var homeUrl string
 
 var logger *log.Logger
 
@@ -37,11 +39,10 @@ var fileList map[string][]byte
 var oldPList map[string]bool
 var lastPoint string
 
-func Name() string {
-	return "LibreOJ"
-}
-
-func Start(logg *log.Logger) error {
+func Start(logg *log.Logger, hp string, fn string, hu string) error {
+	homePath = hp
+	fullName = fn
+	homeUrl = hu
 	logger = logg
 	oldPList = make(map[string]bool)
 	err := public.InitPList(oldPList, homePath)
@@ -49,7 +50,7 @@ func Start(logg *log.Logger) error {
 		return err
 	}
 	lastPoint = ""
-	logger.Println("LibreOJ crawler started")
+	logger.Printf("%s crawler started", fullName)
 	return nil
 }
 
@@ -58,7 +59,7 @@ func Start(logg *log.Logger) error {
  */
 func Update(limit int) (public.FileList, error) {
 	fileList = make(map[string][]byte)
-	problemPage, err := public.GetDocument(nil, "https://loj.ac/problems")
+	problemPage, err := public.GetDocument(nil, homeUrl+"/problems")
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,7 @@ func Update(limit int) (public.FileList, error) {
 	}
 	newPList := make([]public.ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
-		problemListPage, err := public.GetDocument(nil, fmt.Sprintf("https://loj.ac/problems?page=%d", i))
+		problemListPage, err := public.GetDocument(nil, fmt.Sprintf("%s/problems?page=%d", homeUrl, i))
 		if err != nil {
 			return nil, err
 		}
@@ -113,13 +114,13 @@ func Update(limit int) (public.FileList, error) {
 }
 
 func Stop() {
-	logger.Println("LibreOJ crawler stopped")
+	logger.Println(fullName + " crawler stopped")
 }
 
 func getProblem(i *public.ProblemListItem) error {
 	logger.Println("start getting problem ", i.Pid)
 	i.Data = nil
-	res, err := public.SafeGet(nil, fmt.Sprintf("https://loj.ac/problem/%s/export", i.Pid))
+	res, err := public.SafeGet(nil, fmt.Sprintf("%s/problem/%s/export", homeUrl, i.Pid))
 	if err != nil {
 		return err
 	}
@@ -128,7 +129,7 @@ func getProblem(i *public.ProblemListItem) error {
 		return err
 	}
 	res.Body.Close()
-	data := &lojExportProblem{}
+	data := &syzojExportProblem{}
 	err = json.Unmarshal(b, data)
 	if err != nil {
 		return err
@@ -141,7 +142,7 @@ func getProblem(i *public.ProblemListItem) error {
 	i.Data.Title = i.Title
 	i.Data.Time = data.Obj.TimeLimit
 	i.Data.Memory = data.Obj.MemoryLimit
-	i.Data.Url = "https://loj.ac/problem/" + i.Pid
+	i.Data.Url = homeUrl + "/problem/" + i.Pid
 	switch data.Obj.Type {
 	case "traditional":
 		i.Data.Judge = "传统"
@@ -179,7 +180,7 @@ func getProblem(i *public.ProblemListItem) error {
 %s
 
 `, data.Obj.Description, data.Obj.InputFormat, data.Obj.OutputFormat, data.Obj.Example, data.Obj.LimitAndHint)
-	t, err := public.DownloadImage(nil, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://loj.ac/problem/"+i.Pid+"/", "https://loj.ac")
+	t, err := public.DownloadImage(nil, i.Data.Description, homePath+i.Pid+"/img/", fileList, homeUrl+"/problem/"+i.Pid+"/", homeUrl)
 	if err == nil {
 		i.Data.Description = t
 	}
