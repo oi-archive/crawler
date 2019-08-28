@@ -30,6 +30,8 @@ type lojExportProblem struct {
 
 const homePath = "loj/"
 
+var logger *log.Logger
+
 var fileList map[string][]byte
 
 var oldPList map[string]bool
@@ -39,21 +41,22 @@ func Name() string {
 	return "LibreOJ"
 }
 
-func Start() error {
+func Start(logg *log.Logger) error {
+	logger = logg
 	oldPList = make(map[string]bool)
 	err := public.InitPList(oldPList, homePath)
 	if err != nil {
 		return err
 	}
 	lastPoint = ""
-	log.Println("LibreOJ crawler started")
+	logger.Println("LibreOJ crawler started")
 	return nil
 }
 
 /* 执行一次题库爬取
  * limit: 一次最多爬取题目数
  */
-func Update(limit int) (map[string][]byte, error) {
+func Update(limit int) (public.FileList, error) {
 	fileList = make(map[string][]byte)
 	problemPage, err := public.GetDocument(nil, "https://loj.ac/problems")
 	if err != nil {
@@ -110,11 +113,11 @@ func Update(limit int) (map[string][]byte, error) {
 }
 
 func Stop() {
-	log.Println("LibreOJ crawler stopped")
+	logger.Println("LibreOJ crawler stopped")
 }
 
 func getProblem(i *public.ProblemListItem) error {
-	log.Println("start getting problem ", i.Pid)
+	logger.Println("start getting problem ", i.Pid)
 	i.Data = nil
 	res, err := public.SafeGet(nil, fmt.Sprintf("https://loj.ac/problem/%s/export", i.Pid))
 	if err != nil {

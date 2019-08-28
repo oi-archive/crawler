@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/oi-archive/crawler/plugin/public"
 	"github.com/robfig/cron"
 	"gopkg.in/libgit2/git2go.v26"
+	"io"
 	"io/ioutil"
 	"log"
 	"os"
@@ -110,36 +112,55 @@ func gitPush() error {
 func runUpdate() {
 	for _, p := range P {
 		pName := try(p.Lookup("Name")).(func() string)()
-		fileList, err := try(p.Lookup("Update")).(func(int) (map[string][]byte, error))(200)
+		fileList, err := try(p.Lookup("Update")).(func(int) (public.FileList, error))(200)
 		if err != nil {
-			log.Printf(`call "Update" error in plugin %s: %v\n`, pName, err)
+			Log.Printf(`call "Update" error in plugin %s: %v\n`, pName, err)
 			continue
 		}
 		err = addFileAndCommit(fileList, pName)
 		if err != nil {
-			log.Println("git err:", err)
+			Log.Println("git err:", err)
 			currentBranch, err := gitRepo.Head()
 			if err != nil {
-				log.Panicln("git error:", err)
+				Log.Panicln("git error:", err)
 			}
 			currentTip, err := gitRepo.LookupCommit(currentBranch.Target())
 			if err != nil {
-				log.Panicln("git error:", err)
+				Log.Panicln("git error:", err)
 			}
 			err = gitRepo.ResetToCommit(currentTip, git.ResetHard, &git.CheckoutOpts{})
 			if err != nil {
-				log.Panicln("git error:", err)
+				Log.Panicln("git error:", err)
 			}
 		} else {
 			err = gitPush()
 			if err != nil {
-				log.Println("git push error:", err)
+				Log.Println("git push error:", err)
 			}
 		}
-		log.Println("Updated " + pName)
+		Log.Println("Updated " + pName)
 	}
 }
+
+var Log *log.Logger
+
+func initLog() {
+	logFile, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE, 0777)
+	if err != nil {
+		fmt.Printf("open file error=%s\r\n", err.Error())
+		os.Exit(-1)
+	}
+
+	writers := []io.Writer{
+		logFile,
+		os.Stdout,
+	}
+
+	fileAndStdoutWriter := io.MultiWriter(writers...)
+	Log = log.New(fileAndStdoutWriter, "", log.Ldate|log.Ltime)
+}
 func main() {
+	initLog()
 	err := filepath.Walk("plugin", func(path string, info os.FileInfo, err error) error {
 		// 遍历目录查找插件
 		if info.IsDir() {
@@ -152,57 +173,57 @@ func main() {
 		// 插件接口检查
 		f, err := p.Lookup("Name")
 		if err != nil {
-			log.Panicln(`Lookup "Name" in plugin %s error`, path)
+			Log.Panicf(`Lookup "Name" in plugin %s error`, path)
 		}
 		if _, ok := f.(func() string); !ok {
-			log.Panicln(`Check "Name" in plugin %s error`, path)
+			Log.Panicf(`Check "Name" in plugin %s error`, path)
 		}
 		f, err = p.Lookup("Start")
 		if err != nil {
-			log.Panicln(`Lookup "Start" in plugin %s error`, path)
+			Log.Panicf(`Lookup "Start" in plugin %s error`, path)
 		}
-		if _, ok := f.(func() error); !ok {
-			log.Panicln(`Check "Start" in plugin %s error`, path)
+		if _, ok := f.(func(*log.Logger) error); !ok {
+			Log.Panicf(`Check "Start" in plugin %s error`, path)
 		}
 		f, err = p.Lookup("Update")
 		if err != nil {
-			log.Panicln(`Lookup "Update" in plugin %s error`, path)
+			Log.Panicf(`Lookup "Update" in plugin %s error`, path)
 		}
-		if _, ok := f.(func(int) (map[string][]byte, error)); !ok {
-			log.Panicln(`Check "Update" in plugin %s error`, path)
+		if _, ok := f.(func(int) (public.FileList, error)); !ok {
+			Log.Panicf(`Check "Update" in plugin %s error`, path)
 		}
 		f, err = p.Lookup("Stop")
 		if err != nil {
-			log.Panicln(`Lookup "Stop" in plugin %s error`, path)
+			Log.Panicf(`Lookup "Stop" in plugin %s error`, path)
 		}
 		if _, ok := f.(func()); !ok {
-			log.Panicln(`Check "Stop" in plugin %s error`, path)
+			Log.Panicf(`Check "Stop" in plugin %s error`, path)
 		}
-		log.Printf("open plguin %s succeed", path)
+		Log.Printf("open plguin %s succeed", path)
 		P = append(P, p)
 		return nil
 	})
 	if err != nil {
-		log.Panic(err)
+		Log.Panic(err)
 	}
-	log.Println("插件载入完成")
+	Log.Println("插件载入完成")
 	for _, p := range P {
-		err := try(p.Lookup("Start")).(func() error)()
+		err := try(p.Lookup("Start")).(func(*log.Logger) error)(Log)
 		if err != nil {
-			log.Panicf(`call "Start" error in plugin %s: %v\n`, try(p.Lookup("Name")).(func() string)(), err)
+			Log.Panicf(`call "Start" error in plugin %s: %v\n`, try(p.Lookup("Name")).(func() string)(), err)
 		}
 	}
 	gitRepo, err = git.OpenRepository("../source")
 	if err != nil {
-		log.Panicln(err)
+		Log.Panicln(err)
 	}
 	b, err := ioutil.ReadFile("config/sshkey.json")
 	if err != nil {
-		log.Panicln(err)
+		Log.Panicln(err)
 	}
 	err = json.Unmarshal(b, &sshkey)
 	if err != nil {
-		log.Panicln(err)
+		Log.Panicln(err)
 	}
 	runUpdate()
 	c := cron.New()

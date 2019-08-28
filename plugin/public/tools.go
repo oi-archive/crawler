@@ -4,10 +4,12 @@
 package public
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/net/html"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -241,18 +243,19 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 			}
 		}
 	}
-	start := 0
+	start := -1
 	for k := range newPList {
 		if newPList[k].Pid == lastPoint {
 			start = k
 			break
 		}
 	}
-	for k := start + 1; cnt < limit && k != start; k++ {
+	for k := start + 1; cnt < limit; k++ {
 		if k >= len(newPList) {
 			k = 0
 		}
 		i := &newPList[k]
+		lastPoint = i.Pid
 		cnt++
 		err := getProblem(i)
 		if err != nil {
@@ -276,4 +279,10 @@ func InitPList(oldPList map[string]bool, homePath string) error {
 		oldPList[i.Pid] = true
 	}
 	return nil
+}
+
+func Node2html(x *html.Node) string {
+	var b bytes.Buffer
+	_ = html.Render(&b, x)
+	return b.String()
 }

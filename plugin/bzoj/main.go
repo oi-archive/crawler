@@ -1,12 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
 	"github.com/oi-archive/crawler/plugin/public"
-	"golang.org/x/net/html"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -57,10 +55,13 @@ func newAddUATransport(T http.RoundTripper) *addUATransport {
 	return &addUATransport{T}
 }
 
+var logger *log.Logger
+
 var oldPList map[string]bool
 var lastPoint string
 
-func Start() error {
+func Start(logg *log.Logger) error {
+	logger = logg
 	oldPList = make(map[string]bool)
 	err := public.InitPList(oldPList, homePath)
 	if err != nil {
@@ -80,13 +81,13 @@ func Start() error {
 	if err != nil {
 		return err
 	}
-	log.Println("BZOJ crawler started")
+	logger.Println("BZOJ crawler started")
 	return nil
 }
 
 var fileList map[string][]byte
 
-func Update(limit int) (map[string][]byte, error) {
+func Update(limit int) (public.FileList, error) {
 	fileList = make(map[string][]byte)
 	c := &http.Client{Transport: newAddUATransport(nil)}
 	err := login(c)
@@ -138,16 +139,16 @@ func Update(limit int) (map[string][]byte, error) {
 		})
 	}
 	lastPoint = public.DownloadProblems(newPList, oldPList, limit, lastPoint, func(i *public.ProblemListItem) error {
-		log.Println("start getting problem ", i.Pid)
+		logger.Println("start getting problem ", i.Pid)
 		i.Data = nil
 		page, err := public.GetDocument(c, `https://lydsy.com/JudgeOnline/problem.php?id=`+i.Pid)
 		if err != nil {
-			log.Printf("解析题目%s时产生错误：下载题面失败", i.Pid)
+			logger.Printf("解析题目%s时产生错误：下载题面失败", i.Pid)
 			return err
 		}
 		t := page.Find(".content").Nodes
 		if len(t) < 7 {
-			log.Printf("解析题目%s时产生错误：无法获取conetnt对象", i.Pid)
+			logger.Printf("解析题目%s时产生错误：无法获取conetnt对象", i.Pid)
 			return err
 		}
 		i.Data = &public.Problem{}
@@ -198,7 +199,7 @@ func Update(limit int) (map[string][]byte, error) {
 
 %s
 
-`, node2html(t[0]), node2html(t[1]), node2html(t[2]), node2html(t[3]), node2html(t[4]), node2html(t[5]), node2html(t[6]))
+`, public.Node2html(t[0]), public.Node2html(t[1]), public.Node2html(t[2]), public.Node2html(t[3]), public.Node2html(t[4]), public.Node2html(t[5]), public.Node2html(t[6]))
 		d2, err := public.DownloadImage(c, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://lydsy.com/JudgeOnline/", "https://lydsy.com")
 		if err == nil {
 			i.Data.Description = d2
@@ -218,10 +219,4 @@ func Stop() {
 
 func Name() string {
 	return "BZOJ"
-}
-
-func node2html(x *html.Node) string {
-	var b bytes.Buffer
-	_ = html.Render(&b, x)
-	return b.String()
 }
