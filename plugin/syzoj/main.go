@@ -28,38 +28,38 @@ type syzojExportProblem struct {
 	}
 }
 
-var homePath string
-var fullName string
-var homeUrl string
+type SYZOJ struct {
+	homePath  string
+	fullName  string
+	homeUrl   string
+	logger    *log.Logger
+	fileList  public.FileList
+	oldPList  map[string]bool
+	lastPoint string
+}
 
-var logger *log.Logger
-
-var fileList map[string][]byte
-
-var oldPList map[string]bool
-var lastPoint string
-
-func Start(logg *log.Logger, hp string, fn string, hu string) error {
-	homePath = hp
-	fullName = fn
-	homeUrl = hu
-	logger = logg
-	oldPList = make(map[string]bool)
-	err := public.InitPList(oldPList, homePath)
+func (c *SYZOJ) Start(logg *log.Logger, hp string, fn string, hu string) error {
+	c.homePath = hp
+	c.fullName = fn
+	c.homeUrl = hu
+	c.logger = logg
+	c.oldPList = make(map[string]bool)
+	err := public.InitPList(c.oldPList, c.homePath)
 	if err != nil {
 		return err
 	}
-	lastPoint = ""
-	logger.Printf("%s crawler started", fullName)
+	c.lastPoint = ""
+	c.logger.Printf("%s crawler started", c.fullName)
 	return nil
 }
 
 /* 执行一次题库爬取
  * limit: 一次最多爬取题目数
  */
-func Update(limit int) (public.FileList, error) {
-	fileList = make(map[string][]byte)
-	problemPage, err := public.GetDocument(nil, homeUrl+"/problems")
+func (c *SYZOJ) Update(limit int) (public.FileList, error) {
+	c.logger.Printf("Updating %s", c.fullName)
+	c.fileList = make(map[string][]byte)
+	problemPage, err := public.GetDocument(nil, c.homeUrl+"/problems")
 	if err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func Update(limit int) (public.FileList, error) {
 	}
 	newPList := make([]public.ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
-		problemListPage, err := public.GetDocument(nil, fmt.Sprintf("%s/problems?page=%d", homeUrl, i))
+		problemListPage, err := public.GetDocument(nil, fmt.Sprintf("%s/problems?page=%d", c.homeUrl, i))
 		if err != nil {
 			return nil, err
 		}
@@ -101,26 +101,26 @@ func Update(limit int) (public.FileList, error) {
 			newPList = append(newPList, p)
 		}
 	}
-	lastPoint = public.DownloadProblems(newPList, oldPList, limit, lastPoint, getProblem)
-	err = public.WriteFiles(newPList, fileList, homePath)
+	c.lastPoint = public.DownloadProblems(newPList, c.oldPList, limit, c.lastPoint, c.getProblem)
+	err = public.WriteFiles(newPList, c.fileList, c.homePath)
 	if err != nil {
 		return nil, err
 	}
-	oldPList = make(map[string]bool)
+	c.oldPList = make(map[string]bool)
 	for _, i := range newPList {
-		oldPList[i.Pid] = true
+		c.oldPList[i.Pid] = true
 	}
-	return fileList, nil
+	return c.fileList, nil
 }
 
-func Stop() {
-	logger.Println(fullName + " crawler stopped")
+func (c *SYZOJ) Stop() {
+	c.logger.Println(c.fullName + " crawler stopped")
 }
 
-func getProblem(i *public.ProblemListItem) error {
-	logger.Println("start getting problem ", i.Pid)
+func (c *SYZOJ) getProblem(i *public.ProblemListItem) error {
+	c.logger.Println("start getting problem ", i.Pid)
 	i.Data = nil
-	res, err := public.SafeGet(nil, fmt.Sprintf("%s/problem/%s/export", homeUrl, i.Pid))
+	res, err := public.SafeGet(nil, fmt.Sprintf("%s/problem/%s/export", c.homeUrl, i.Pid))
 	if err != nil {
 		return err
 	}
@@ -142,7 +142,7 @@ func getProblem(i *public.ProblemListItem) error {
 	i.Data.Title = i.Title
 	i.Data.Time = data.Obj.TimeLimit
 	i.Data.Memory = data.Obj.MemoryLimit
-	i.Data.Url = homeUrl + "/problem/" + i.Pid
+	i.Data.Url = c.homeUrl + "/problem/" + i.Pid
 	switch data.Obj.Type {
 	case "traditional":
 		i.Data.Judge = "传统"
@@ -180,7 +180,7 @@ func getProblem(i *public.ProblemListItem) error {
 %s
 
 `, data.Obj.Description, data.Obj.InputFormat, data.Obj.OutputFormat, data.Obj.Example, data.Obj.LimitAndHint)
-	t, err := public.DownloadImage(nil, i.Data.Description, homePath+i.Pid+"/img/", fileList, homeUrl+"/problem/"+i.Pid+"/", homeUrl)
+	t, err := public.DownloadImage(nil, i.Data.Description, c.homePath+i.Pid+"/img/", c.fileList, c.homeUrl+"/problem/"+i.Pid+"/", c.homeUrl)
 	if err == nil {
 		i.Data.Description = t
 	}

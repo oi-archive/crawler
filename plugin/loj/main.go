@@ -12,17 +12,20 @@ func Name() string {
 	return "LibreOJ"
 }
 
+var c *syzoj.SYZOJ
+
 func Start(logg *log.Logger) error {
-	return syzoj.Start(logg, homePath, Name(), "https://loj.ac")
+	c = &syzoj.SYZOJ{}
+	return c.Start(logg, homePath, Name(), "https://loj.ac")
 }
 
 /* 执行一次题库爬取
  * limit: 一次最多爬取题目数
  */
 func Update(limit int) (public.FileList, error) {
-	return syzoj.Update(limit)
+	return c.Update(limit)
 }
 
 func Stop() {
-	syzoj.Stop()
+	c.Stop()
 }

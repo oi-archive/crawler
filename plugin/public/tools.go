@@ -115,14 +115,17 @@ func GetDocument(c *http.Client, url string) (*goquery.Document, error) {
 	return doc, nil
 }
 
-// 返回输入 url 的文件扩展名（若获取失败则返回空字符串）
-func getFileExtension(url string) string {
+// 返回输入 url 的文件扩展名
+func getFileExtension(url string) (string, error) {
 	a := strings.Split(url, ".")
 	if len(a) <= 1 {
-		return ""
+		return "", fmt.Errorf("")
 	}
 	b := strings.Split(a[len(a)-1], "?")
-	return b[0]
+	if len(b[0]) > 5 {
+		return "", fmt.Errorf("")
+	}
+	return b[0], nil
 }
 
 var urlRule = regexp.MustCompile(`(https?|ftp|file)://[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]`)
@@ -162,10 +165,16 @@ func DownloadImage(c *http.Client, text string, prefix string, fileList map[stri
 			}
 		}
 		b64 := base64.URLEncoding.EncodeToString([]byte(match))
-		if len(b64) > 240 {
+		if len(b64) > 200 {
 			b64 = CalcMD5(b64)
 		}
-		path := prefix + b64 + "." + getFileExtension(match)
+		path := ""
+		ex, err := getFileExtension(match)
+		if err == nil {
+			path = prefix + b64 + "." + ex
+		} else {
+			path = prefix + b64
+		}
 		fileList[path] = file
 		return r2.ReplaceAllString(x, "(source/"+path+")")
 	})
@@ -192,10 +201,16 @@ func DownloadImage(c *http.Client, text string, prefix string, fileList map[stri
 			}
 		}
 		b64 := base64.URLEncoding.EncodeToString([]byte(match))
-		if len(b64) > 240 {
+		if len(b64) > 200 {
 			b64 = CalcMD5(b64)
 		}
-		path := prefix + b64 + "." + getFileExtension(match)
+		path := ""
+		ex, err := getFileExtension(match)
+		if err == nil {
+			path = prefix + b64 + "." + ex
+		} else {
+			path = prefix + b64
+		}
 		fileList[path] = file
 		return r2.ReplaceAllString(x, r3.ReplaceAllString(match2, `"source/`+path+`"`))
 	})
