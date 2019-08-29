@@ -145,7 +145,7 @@ func runUpdate() {
 var Log *log.Logger
 
 func initLog() {
-	logFile, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE, 0777)
+	logFile, err := os.OpenFile("log.txt", os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0777)
 	if err != nil {
 		fmt.Printf("open file error=%s\r\n", err.Error())
 		os.Exit(-1)

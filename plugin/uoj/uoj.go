@@ -35,6 +35,7 @@ func Start(logg *log.Logger) error {
 }
 
 func Update(limit int) (public.FileList, error) {
+	logger.Println("Updating UniversalOJ")
 	fileList = make(public.FileList)
 	problemPage, err := public.GetDocument(nil, "http://uoj.ac/problems")
 	if err != nil {

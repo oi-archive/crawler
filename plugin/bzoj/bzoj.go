@@ -88,6 +88,7 @@ func Start(logg *log.Logger) error {
 var fileList map[string][]byte
 
 func Update(limit int) (public.FileList, error) {
+	logger.Println("Updating BZOJ")
 	fileList = make(map[string][]byte)
 	c := &http.Client{Transport: newAddUATransport(nil)}
 	err := login(c)
