@@ -126,20 +126,25 @@ func Update(limit int) (public.FileList, error) {
 		}
 		list := problemListPage.Find(`.evenrow,.oddrow`)
 		list.Each(func(_ int, s *goquery.Selection) {
+			if len(s.Nodes) == 0 {
+				return
+			}
 			t := s.Nodes[0]
-			// TODO: 各类错误处理
-			if t.FirstChild.NextSibling.NextSibling == nil {
+			if t == nil || t.FirstChild == nil || t.FirstChild.NextSibling == nil || t.FirstChild.NextSibling.NextSibling == nil {
 				return
 			}
 			p := public.ProblemListItem{}
 			j := t.FirstChild.NextSibling
 			p.Pid = j.FirstChild.Data
+			if j.NextSibling == nil || j.NextSibling.FirstChild == nil || j.NextSibling.FirstChild.FirstChild == nil {
+				return
+			}
 			j = j.NextSibling.FirstChild.FirstChild
 			p.Title = j.Data
 			newPList = append(newPList, p)
 		})
 	}
-	lastPoint = public.DownloadProblems(newPList, oldPList, limit, lastPoint, func(i *public.ProblemListItem) error {
+	lastPoint = public.DownloadProblems(newPList, oldPList, limit, lastPoint, func(i *public.ProblemListItem) (err error) {
 		logger.Println("start getting problem ", i.Pid)
 		i.Data = nil
 		page, err := public.GetDocument(c, `https://lydsy.com/JudgeOnline/problem.php?id=`+i.Pid)

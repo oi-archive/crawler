@@ -259,12 +259,22 @@ func WriteFiles(pList ProblemList, fileList FileList, homePath string) error {
 }
 
 func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int, lastPoint string, getProblem func(*ProblemListItem) error) string {
+	f := func(i *ProblemListItem) (err error) {
+		defer func() {
+			if perr := recover(); perr != nil {
+				log.Println("解析题目时产生异常：", perr)
+				i.Data = nil
+				err = perr.(error)
+			}
+		}()
+		return getProblem(i)
+	}
 	cnt := 0
 	for k := range newPList {
 		i := &newPList[k]
 		if _, ok := oldPList[i.Pid]; !ok {
 			cnt++
-			err := getProblem(i)
+			err := f(i)
 			if err != nil {
 				log.Printf("爬取题目%s时出现错误:%v", i.Pid, err)
 			}
@@ -284,7 +294,7 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 		i := &newPList[k]
 		lastPoint = i.Pid
 		cnt++
-		err := getProblem(i)
+		err := f(i)
 		if err != nil {
 			log.Printf("爬取题目%s时出现错误:%v", i.Pid, err)
 		}

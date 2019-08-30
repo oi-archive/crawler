@@ -1,4 +1,4 @@
-build: crawler plugin/loj.so plugin/bzoj.so plugin/uoj.so plugin/guoj.so
+build: crawler plugin/loj.so plugin/bzoj.so plugin/uoj.so plugin/guoj.so plugin/cogs.so
 clean:
 	rm plugin/*.so
 crawler: main.go plugin/public/tools.go
@@ -13,6 +13,8 @@ plugin/guoj.so: plugin/guoj/guoj.go plugin/public/tools.go plugin/syzoj/main.go
 	go build -buildmode=plugin -o ./plugin/guoj.so  ./plugin/guoj/
 plugin/tsinsen.so: plugin/tsinsen/tsinsen.go plugin/public/tools.go
 	go build -buildmode=plugin -o ./plugin/tsinsen.so  ./plugin/tsinsen/
+plugin/cogs.so: plugin/cogs/cogs.go plugin/public/tools.go
+	go build -buildmode=plugin -o ./plugin/cogs.so  ./plugin/cogs/
 
 .PHONY: build
 
