@@ -276,6 +276,7 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 			cnt++
 			err := f(i)
 			if err != nil {
+				i.Data = nil
 				log.Printf("爬取题目%s时出现错误:%v", i.Pid, err)
 			}
 		}
@@ -287,7 +288,7 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 			break
 		}
 	}
-	for k := start + 1; cnt < limit; k++ {
+	for k := start + 1; k != start && cnt < limit; k++ {
 		if k >= len(newPList) {
 			k = 0
 		}
@@ -296,6 +297,7 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 		cnt++
 		err := f(i)
 		if err != nil {
+			i.Data = nil
 			log.Printf("爬取题目%s时出现错误:%v", i.Pid, err)
 		}
 	}
@@ -322,4 +324,12 @@ func Node2html(x *html.Node) string {
 	var b bytes.Buffer
 	_ = html.Render(&b, x)
 	return b.String()
+}
+
+func NodeChildren2html(x *html.Node) string {
+	s := ""
+	for i := x.FirstChild; i != nil; i = i.NextSibling {
+		s += Node2html(i)
+	}
+	return s
 }
