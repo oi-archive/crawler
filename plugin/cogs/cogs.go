@@ -35,7 +35,6 @@ func Start(logg *log.Logger) error {
 }
 
 func Update(limit int) (public.FileList, error) {
-	limit = 100
 	logger.Println("Updating COGS")
 	fileList = make(public.FileList)
 	problemPage, err := public.GetDocument(nil, "http://cogs.pro:8080/cogs/problem/index.php")
@@ -66,7 +65,6 @@ func Update(limit int) (public.FileList, error) {
 	if maxPage <= 0 || maxPage >= 500 {
 		return nil, fmt.Errorf("maxPage error: %d", maxPage)
 	}
-	maxPage = 5
 	newPList := make([]public.ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
 		problemListPage, err := public.GetDocument(nil, fmt.Sprintf("http://cogs.pro:8080/cogs/problem/index.php?page=%d", i))
@@ -109,45 +107,6 @@ func Update(limit int) (public.FileList, error) {
 		if cnt == 0 {
 			return nil, errParsingProblemList
 		}
-		/*
-			table:=problemListPage.Find(`#problist > tbody`)
-			if len(table.Nodes)==0 || table.Nodes[0].FirstChild==nil {
-				log.Println("0")
-				return nil,errParsingProblemList
-			}
-			for j:=table.Nodes[0].FirstChild; j!=nil; j=j.NextSibling {
-				var err error=nil
-				func (){
-					defer func() {
-						if t:=recover(); t!=nil {
-							err=t.(error)
-						}
-					}()
-					p:=public.ProblemListItem{}
-					p.Data=&public.Problem{}
-					po:=j.FirstChild.NextSibling
-					p.Pid=po.FirstChild.Data
-					po=po.NextSibling.NextSibling
-					po2:=po.FirstChild.NextSibling.FirstChild
-					for _,k:=range po2.Attr {
-						if k.Key=="href" {
-							p.Data.Url="http://cogs.pro:8080/cogs/problem/"+k.Val
-						}
-					}
-					if p.Data.Url=="" {
-						err= errParsingProblemList
-						return
-					}
-					p.Title=po2.FirstChild.Data
-					fmt.Println(p.Pid,p.Title,p.Data.Url)
-					t:=po.NextSibling.NextSibling.NextSibling.NextSibling.FirstChild.Data
-					log.Println(t)
-					newPList=append(newPList,p)
-				}()
-				if err!=nil {
-					return nil,err
-				}
-			}*/
 	}
 	lastPoint = public.DownloadProblems(newPList, oldPList, limit, lastPoint, func(p *public.ProblemListItem) error {
 		logger.Println("开始抓取题目 ", p.Pid)
@@ -166,7 +125,7 @@ func Update(limit int) (public.FileList, error) {
 		})
 		if cnt == 0 {
 			log.Println("警告！题面解析失败")
-			html = "# 题目描述\n\n"
+			html = "# 题目描述\n\n" + html
 		}
 		p.Data.Description = html
 		p.Data.DescriptionType = "html"
