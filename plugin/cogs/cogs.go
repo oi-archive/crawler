@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/oi-archive/crawler/plugin/public"
 	"log"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -116,7 +115,7 @@ func Update(limit int) (public.FileList, error) {
 		}
 		html := public.NodeChildren2html(page.Find(`#probdetail > dl`).Nodes[0])
 		html += "\n"
-		rule := regexp.MustCompile(`<(?:h3|div|p|b)>(?:.|\n|\r)*?(?:【|\[|<strong>)(.+?)(?:】|\]|</strong>)(?:.|\n|\r)*?</(?:h3|div|p|b)>`)
+		/*rule := regexp.MustCompile(`<(?:h3|div|p|b)>(?:.|\n|\r)*?(?:【|\[|<strong>)(.+?)(?:】|\]|</strong>)(?:.|\n|\r)*?</(?:h3|div|p|b)>`)
 		cnt := 0
 		html = rule.ReplaceAllStringFunc(html, func(x string) string {
 			cnt++
@@ -126,7 +125,8 @@ func Update(limit int) (public.FileList, error) {
 		if cnt == 0 {
 			log.Println("警告！题面解析失败")
 			html = "# 题目描述\n\n" + html
-		}
+		}*/
+		html = "# 题目描述\n\n" + html
 		p.Data.Description = html
 		p.Data.DescriptionType = "html"
 		p.Data.Judge = page.Find(`#leftbar > table:nth-child(1) > tbody > tr:nth-child(6) > td > span.pull-right > span`).Nodes[0].FirstChild.Data
