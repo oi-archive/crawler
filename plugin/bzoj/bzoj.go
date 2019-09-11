@@ -157,18 +157,22 @@ func Update(limit int) (public.FileList, error) {
 			logger.Printf("解析题目%s时产生错误：无法获取conetnt对象", i.Pid)
 			return err
 		}
+		pos := "3"
+		if strings.Contains(public.Node2html(page.Nodes[0]), `class="notice"`) {
+			pos = "4"
+		}
 		i.Data = &public.Problem{}
 		i.Data.DescriptionType = "html"
-		i.Data.Time, err = strconv.Atoi(strings.Split(page.Find(`body > center:nth-child(3) > span:nth-child(2)`).Nodes[0].NextSibling.Data, " ")[0])
+		i.Data.Time, err = strconv.Atoi(strings.Split(page.Find(fmt.Sprintf(`body > center:nth-child(%s) > span:nth-child(2)`, pos)).Nodes[0].NextSibling.Data, " ")[0])
 		i.Data.Time *= 1000
 		if err != nil {
 			i.Data.Time = 0
 		}
-		i.Data.Memory, err = strconv.Atoi(strings.Split(page.Find(`body > center:nth-child(3) > span:nth-child(3)`).Nodes[0].NextSibling.Data, " ")[0])
+		i.Data.Memory, err = strconv.Atoi(strings.Split(page.Find(fmt.Sprintf(`body > center:nth-child(%s) > span:nth-child(3)`, pos)).Nodes[0].NextSibling.Data, " ")[0])
 		if err != nil {
 			i.Data.Memory = 0
 		}
-		if len(page.Find(`body > center:nth-child(3) > span.red`).Nodes) == 0 {
+		if len(page.Find(fmt.Sprintf(`body > center:nth-child(%s) > span.red`, pos)).Nodes) == 0 {
 			i.Data.Judge = "传统"
 		} else {
 			i.Data.Judge = "传统 Special Judge"

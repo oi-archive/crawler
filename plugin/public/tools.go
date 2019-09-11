@@ -269,6 +269,9 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 		}()
 		return getProblem(i)
 	}
+	if limit > len(newPList) {
+		limit = len(newPList)
+	}
 	cnt := 0
 	for k := range newPList {
 		i := &newPList[k]

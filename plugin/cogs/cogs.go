@@ -115,17 +115,6 @@ func Update(limit int) (public.FileList, error) {
 		}
 		html := public.NodeChildren2html(page.Find(`#probdetail > dl`).Nodes[0])
 		html += "\n"
-		/*rule := regexp.MustCompile(`<(?:h3|div|p|b)>(?:.|\n|\r)*?(?:【|\[|<strong>)(.+?)(?:】|\]|</strong>)(?:.|\n|\r)*?</(?:h3|div|p|b)>`)
-		cnt := 0
-		html = rule.ReplaceAllStringFunc(html, func(x string) string {
-			cnt++
-			match := rule.FindStringSubmatch(x)[1]
-			return "\n# " + match + "\n\n"
-		})
-		if cnt == 0 {
-			log.Println("警告！题面解析失败")
-			html = "# 题目描述\n\n" + html
-		}*/
 		html = "# 题目描述\n\n" + html
 		p.Data.Description = html
 		p.Data.DescriptionType = "html"
