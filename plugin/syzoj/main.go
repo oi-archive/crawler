@@ -66,14 +66,10 @@ func (c *SYZOJ) Update(limit int) (public.FileList, error) {
 	list := problemPage.Find(".ui.pagination.menu")
 	maxPage := 0
 	if list.Size() > 0 {
-		for i := range list.Eq(0).Nodes {
-			//tt:=list.Eq(i).Text()
-			for _, j := range strings.Split(list.Eq(i).Text(), "\n") {
-				t, err := strconv.Atoi(strings.Trim(j, " "))
-				if err != nil {
-					continue
-				}
-				if t > maxPage {
+		for i := list.Nodes[0].FirstChild; i != nil; i = i.NextSibling {
+			if i.FirstChild != nil {
+				t, err := strconv.Atoi(strings.Trim(i.FirstChild.Data, "\n\r\t "))
+				if err == nil && t > maxPage {
 					maxPage = t
 				}
 			}
@@ -88,7 +84,7 @@ func (c *SYZOJ) Update(limit int) (public.FileList, error) {
 		if err != nil {
 			return nil, err
 		}
-		list := problemListPage.Find(`[style="vertical-align: middle; "]`)
+		list := problemListPage.Find(`[style^=vertical-align]`)
 		for j := range list.Nodes {
 			p := public.ProblemListItem{Title: strings.Replace(list.Eq(j).Text(), "\n", "", -1)}
 			node := list.Nodes[j]
@@ -101,6 +97,7 @@ func (c *SYZOJ) Update(limit int) (public.FileList, error) {
 			newPList = append(newPList, p)
 		}
 	}
+	c.logger.Println(len(newPList))
 	c.lastPoint = public.DownloadProblems(newPList, c.oldPList, limit, c.lastPoint, c.getProblem)
 	err = public.WriteFiles(newPList, c.fileList, c.homePath)
 	if err != nil {
