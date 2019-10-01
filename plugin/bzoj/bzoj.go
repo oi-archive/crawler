@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	"github.com/oi-archive/crawler/plugin/public"
+	. "github.com/oi-archive/crawler/plugin/public"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -30,7 +30,7 @@ func login(c *http.Client) error {
 		return err
 	}
 	c.Jar = jar
-	b, err := public.PostAndRead(c, "https://lydsy.com/JudgeOnline/login.php", url.Values{"user_id": {cfg.Username}, "password": {cfg.Password}})
+	b, err := PostAndRead(c, "https://lydsy.com/JudgeOnline/login.php", url.Values{"user_id": {cfg.Username}, "password": {cfg.Password}})
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ var lastPoint string
 func Start(logg *log.Logger) error {
 	logger = logg
 	oldPList = make(map[string]bool)
-	err := public.InitPList(oldPList, homePath)
+	err := InitPList(oldPList, homePath)
 	if err != nil {
 		return err
 	}
@@ -88,7 +88,7 @@ func Start(logg *log.Logger) error {
 
 var fileList map[string][]byte
 
-func Update(limit int) (public.FileList, error) {
+func Update(limit int) (FileList, error) {
 	logger.Println("Updating BZOJ")
 	fileList = make(map[string][]byte)
 	c := &http.Client{Transport: newAddUATransport(nil)}
@@ -96,7 +96,7 @@ func Update(limit int) (public.FileList, error) {
 	if err != nil {
 		return nil, err
 	}
-	problemPage, err := public.GetDocument(c, "https://lydsy.com/JudgeOnline/problemset.php")
+	problemPage, err := GetDocument(c, "https://lydsy.com/JudgeOnline/problemset.php")
 	if err != nil {
 		return nil, err
 	}
@@ -119,9 +119,9 @@ func Update(limit int) (public.FileList, error) {
 	if maxPage <= 0 || maxPage >= 500 {
 		return nil, fmt.Errorf("maxPage error: %d", maxPage)
 	}
-	newPList := make([]public.ProblemListItem, 0)
+	newPList := make([]ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
-		problemListPage, err := public.GetDocument(c, fmt.Sprintf("https://lydsy.com/JudgeOnline/problemset.php?page=%d", i))
+		problemListPage, err := GetDocument(c, fmt.Sprintf("https://lydsy.com/JudgeOnline/problemset.php?page=%d", i))
 		if err != nil {
 			return nil, err
 		}
@@ -134,7 +134,7 @@ func Update(limit int) (public.FileList, error) {
 			if t == nil || t.FirstChild == nil || t.FirstChild.NextSibling == nil || t.FirstChild.NextSibling.NextSibling == nil {
 				return
 			}
-			p := public.ProblemListItem{}
+			p := ProblemListItem{}
 			j := t.FirstChild.NextSibling
 			p.Pid = j.FirstChild.Data
 			if j.NextSibling == nil || j.NextSibling.FirstChild == nil || j.NextSibling.FirstChild.FirstChild == nil {
@@ -145,10 +145,10 @@ func Update(limit int) (public.FileList, error) {
 			newPList = append(newPList, p)
 		})
 	}
-	lastPoint = public.DownloadProblems(newPList, oldPList, limit, lastPoint, func(i *public.ProblemListItem) (err error) {
+	lastPoint = DownloadProblems(newPList, oldPList, limit, lastPoint, func(i *ProblemListItem) (err error) {
 		logger.Println("start getting problem ", i.Pid)
 		i.Data = nil
-		page, err := public.GetDocument(c, `https://lydsy.com/JudgeOnline/problem.php?id=`+i.Pid)
+		page, err := GetDocument(c, `https://lydsy.com/JudgeOnline/problem.php?id=`+i.Pid)
 		if err != nil {
 			logger.Printf("解析题目%s时产生错误：下载题面失败", i.Pid)
 			return err
@@ -159,10 +159,10 @@ func Update(limit int) (public.FileList, error) {
 			return err
 		}
 		pos := "3"
-		if strings.Contains(public.Node2html(page.Nodes[0]), `class="notice"`) {
+		if strings.Contains(Node2html(page.Nodes[0]), `class="notice"`) {
 			pos = "4"
 		}
-		i.Data = &public.Problem{}
+		i.Data = &Problem{}
 		i.Data.DescriptionType = "html"
 		i.Data.Time, err = strconv.Atoi(strings.Split(page.Find(fmt.Sprintf(`body > center:nth-child(%s) > span:nth-child(2)`, pos)).Nodes[0].NextSibling.Data, " ")[0])
 		i.Data.Time *= 1000
@@ -210,17 +210,17 @@ func Update(limit int) (public.FileList, error) {
 
 %s
 
-`, public.Node2html(t[0]), public.Node2html(t[1]), public.Node2html(t[2]), public.Node2html(t[3]), public.Node2html(t[4]), public.Node2html(t[5]), public.Node2html(t[6]))
+`, Node2html(t[0]), Node2html(t[1]), Node2html(t[2]), Node2html(t[3]), Node2html(t[4]), Node2html(t[5]), Node2html(t[6]))
 		r := regexp.MustCompile(`<p>[\s]*`)
 		i.Data.Description = r.ReplaceAllString(i.Data.Description, `<p>`)
 		i.Data.Description = strings.ReplaceAll(i.Data.Description, "<br>\n", "<br>")
-		d2, err := public.DownloadImage(c, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://lydsy.com/JudgeOnline/", "https://lydsy.com")
+		d2, err := DownloadImage(c, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://lydsy.com/JudgeOnline/", "https://lydsy.com")
 		if err == nil {
 			i.Data.Description = d2
 		}
 		return nil
 	})
-	err = public.WriteFiles(newPList, fileList, homePath)
+	err = WriteFiles(newPList, fileList, homePath)
 	if err != nil {
 		return nil, err
 	}

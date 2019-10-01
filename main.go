@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/oi-archive/crawler/plugin/public"
+	. "github.com/oi-archive/crawler/plugin/public"
 	"github.com/robfig/cron"
 	"gopkg.in/libgit2/git2go.v26"
 	"io"
@@ -112,7 +112,7 @@ func gitPush() error {
 func runUpdate() {
 	for _, p := range P {
 		pName := try(p.Lookup("Name")).(func() string)()
-		var fileList public.FileList
+		var fileList FileList
 		var err error = nil
 		func() {
 			defer func() {
@@ -120,7 +120,7 @@ func runUpdate() {
 					err = t.(error)
 				}
 			}()
-			fileList, err = try(p.Lookup("Update")).(func(int) (public.FileList, error))(200)
+			fileList, err = try(p.Lookup("Update")).(func(int) (FileList, error))(200)
 		}()
 		if err != nil {
 			Log.Printf(`call "Update" error in plugin %s: %v\n`, pName, err)
@@ -198,7 +198,7 @@ func main() {
 		if err != nil {
 			Log.Panicf(`Lookup "Update" in plugin %s error`, path)
 		}
-		if _, ok := f.(func(int) (public.FileList, error)); !ok {
+		if _, ok := f.(func(int) (FileList, error)); !ok {
 			Log.Panicf(`Check "Update" in plugin %s error`, path)
 		}
 		f, err = p.Lookup("Stop")
