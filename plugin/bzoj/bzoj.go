@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -210,6 +211,9 @@ func Update(limit int) (public.FileList, error) {
 %s
 
 `, public.Node2html(t[0]), public.Node2html(t[1]), public.Node2html(t[2]), public.Node2html(t[3]), public.Node2html(t[4]), public.Node2html(t[5]), public.Node2html(t[6]))
+		r := regexp.MustCompile(`<p>[\s]*`)
+		i.Data.Description = r.ReplaceAllString(i.Data.Description, `<p>`)
+		i.Data.Description = strings.ReplaceAll(i.Data.Description, "<br>\n", "<br>")
 		d2, err := public.DownloadImage(c, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://lydsy.com/JudgeOnline/", "https://lydsy.com")
 		if err == nil {
 			i.Data.Description = d2

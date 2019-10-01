@@ -3,7 +3,7 @@
 package main
 
 import (
-	"github.com/oi-archive/crawler/plugin/public"
+	. "github.com/oi-archive/crawler/plugin/public"
 	"log"
 	"regexp"
 	"strconv"
@@ -26,17 +26,17 @@ func Start(logg *log.Logger) error {
 	return nil
 }
 
-func Update(limit int) (public.FileList, error) {
+func Update(limit int) (FileList, error) {
 	logger.Println("Updating Tsinsen")
-	fileList = make(public.FileList)
-	pl := make(public.ProblemList, 0)
+	fileList = make(FileList)
+	pl := make(ProblemList, 0)
 	for i := 1000; i <= 1518; i++ {
-		p := public.ProblemListItem{}
-		p.Data = &public.Problem{}
+		p := ProblemListItem{}
+		p.Data = &Problem{}
 		p.Pid = "A" + strconv.Itoa(i)
 		p.Data.Url = "http://www.tsinsen.com/" + p.Pid
 		log.Println("start getting problem " + p.Pid)
-		page, err := public.GetDocument(nil, p.Data.Url)
+		page, err := GetDocument(nil, p.Data.Url)
 		if err != nil {
 			log.Panicln(err)
 		}
@@ -77,7 +77,7 @@ func Update(limit int) (public.FileList, error) {
 		p.Data.Judge = ""
 		p.Data.DescriptionType = "html"
 		t3 := page.Find(`#pcont1`).Nodes[0]
-		html := public.Node2html(t3)
+		html := NodeChildren2html(t3)
 		rule := regexp.MustCompile(`<div class="pdsec">(.+?)</div>`)
 		cnt := 0
 		html = rule.ReplaceAllStringFunc(html, func(x string) string {
@@ -88,7 +88,7 @@ func Update(limit int) (public.FileList, error) {
 		if cnt == 0 {
 			log.Println("Warning!")
 			t5 := page.Find(`#pcont2`).Nodes[0]
-			html2 := public.Node2html(t5)
+			html2 := NodeChildren2html(t5)
 			rule := regexp.MustCompile(`<p class="subtitle">(.+)</p>`)
 			cnt := 0
 			html2 = rule.ReplaceAllStringFunc(html2, func(x string) string {
@@ -105,9 +105,7 @@ func Update(limit int) (public.FileList, error) {
 			if cnt <= 0 || cnt >= 15 {
 				log.Println("Error! cnt=", cnt)
 				html = "# 题面\n\n"
-				for j := t3.FirstChild; j != nil; j = j.NextSibling {
-					html += public.Node2html(j) + "\n"
-				}
+				html += NodeChildren2html(t3)
 			} else {
 				html = html2
 				log.Println(cnt)
@@ -115,7 +113,7 @@ func Update(limit int) (public.FileList, error) {
 		} else {
 			log.Println(cnt)
 		}
-		t4, err := public.DownloadImage(nil, html, homePath+p.Pid+"/img/", fileList, "http://www.tsinsen.com/"+p.Pid+"/", "http://www.tsinsen.com")
+		t4, err := DownloadImage(nil, html, homePath+p.Pid+"/img/", fileList, "http://www.tsinsen.com/"+p.Pid+"/", "http://www.tsinsen.com")
 		if err != nil {
 			log.Println(err)
 		} else {
@@ -124,7 +122,7 @@ func Update(limit int) (public.FileList, error) {
 		p.Data.Description = html
 		pl = append(pl, p)
 	}
-	err := public.WriteFiles(pl, fileList, homePath)
+	err := WriteFiles(pl, fileList, homePath)
 	if err != nil {
 		log.Panicln(err)
 	}

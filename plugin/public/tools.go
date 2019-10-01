@@ -176,7 +176,7 @@ func DownloadImage(c *http.Client, text string, prefix string, fileList map[stri
 			path = prefix + b64
 		}
 		fileList[path] = file
-		return r2.ReplaceAllString(x, "(source/"+path+")")
+		return r2.ReplaceAllString(x, "(/source/"+path+")")
 	})
 	rule = regexp.MustCompile(`<img[^>]+src\s*=\s*['"]([^'"]+)['"][^>]*>`)
 	r2 = regexp.MustCompile(`src\s*=\s*['"]([^'"]+)['"]`)
@@ -212,7 +212,7 @@ func DownloadImage(c *http.Client, text string, prefix string, fileList map[stri
 			path = prefix + b64
 		}
 		fileList[path] = file
-		return r2.ReplaceAllString(x, r3.ReplaceAllString(match2, `"source/`+path+`"`))
+		return r2.ReplaceAllString(x, r3.ReplaceAllString(match2, `"/source/`+path+`"`))
 	})
 	return text, nil
 }

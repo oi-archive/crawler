@@ -75,7 +75,7 @@ func addFileAndCommit(fileList map[string][]byte, problemsetName string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(commitID)
+	Log.Println(commitID)
 	nextTip, err := gitRepo.LookupCommit(commitID)
 	if err != nil {
 		return err
