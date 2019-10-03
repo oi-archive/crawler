@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+import "google/protobuf/empty.proto";
+
+package rpc;
+
+service API {
+    // 组件启动时调用
+    rpc Register (RegisterRequest) returns (RegisterReply) {}
+    // 组件关闭时调用
+    rpc Deregister (DeregisterRequest) returns (google.protobuf.Empty) {}
+    // 组件向主服务提交更新时调用
+    rpc Update (UpdateRequest) returns (UpdateReply) {}
+}
+
+message RegisterRequest {
+    string id=1; // 题库代号
+    string name=2; // 题库名称
+}
+
+message RegisterReply {
+    bool debug_mode=1; // 当前是否为调试模式
+}
+
+message DeregisterRequest {
+    string id=1;
+}
+
+message UpdateRequest {
+    string id=1;
+    map<string,bytes> file=2; //此次要提交更新的文件列表，key表示文件完整路径名，value表示文件内容
+}
+
+message UpdateReply {
+    bool ok=1; // 本次提交是否成功
+}

@@ -3,3 +3,9 @@
 crawler
 config/
 log.txt
+*.pb.go
+api_pb2_grpc.py
+api_pb2.py
+*.swp
+*.swo
+

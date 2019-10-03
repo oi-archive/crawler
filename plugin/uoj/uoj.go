@@ -1,15 +1,20 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"github.com/oi-archive/crawler/plugin/public"
+	. "github.com/oi-archive/crawler/plugin/public"
+	"github.com/oi-archive/crawler/rpc"
+	"google.golang.org/grpc"
 	"log"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 )
 
-const homePath = "uoj/"
+const PID = "uoj"
+const homePath = PID + "/"
 
 var logger *log.Logger
 
@@ -18,14 +23,10 @@ var fileList map[string][]byte
 var oldPList map[string]bool
 var lastPoint string
 
-func Name() string {
-	return "UniversalOJ"
-}
-
-func Start(logg *log.Logger) error {
-	logger = logg
+func Start() error {
+	logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
 	oldPList = make(map[string]bool)
-	err := public.InitPList(oldPList, homePath)
+	err := InitPList(oldPList, homePath)
 	if err != nil {
 		return err
 	}
@@ -34,10 +35,10 @@ func Start(logg *log.Logger) error {
 	return nil
 }
 
-func Update(limit int) (public.FileList, error) {
+func Update(limit int) (FileList, error) {
 	logger.Println("Updating UniversalOJ")
-	fileList = make(public.FileList)
-	problemPage, err := public.GetDocument(nil, "http://uoj.ac/problems")
+	fileList = make(FileList)
+	problemPage, err := GetDocument(nil, "http://uoj.ac/problems")
 	if err != nil {
 		return nil, err
 	}
@@ -63,9 +64,9 @@ func Update(limit int) (public.FileList, error) {
 	if maxPage <= 0 || maxPage >= 500 {
 		return nil, fmt.Errorf("maxPage error: %d", maxPage)
 	}
-	newPList := make([]public.ProblemListItem, 0)
+	newPList := make([]ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
-		problemListPage, err := public.GetDocument(nil, fmt.Sprintf("http://uoj.ac/problems?page=%d", i))
+		problemListPage, err := GetDocument(nil, fmt.Sprintf("http://uoj.ac/problems?page=%d", i))
 		if err != nil {
 			return nil, err
 		}
@@ -74,7 +75,7 @@ func Update(limit int) (public.FileList, error) {
 			return nil, errParsingProblemList
 		}
 		for j := table.Nodes[0].FirstChild; j != nil; j = j.NextSibling {
-			p := public.ProblemListItem{}
+			p := ProblemListItem{}
 			po := j.FirstChild
 			if po == nil || po.FirstChild == nil {
 				return nil, errParsingProblemList
@@ -88,10 +89,10 @@ func Update(limit int) (public.FileList, error) {
 			newPList = append(newPList, p)
 		}
 	}
-	lastPoint = public.DownloadProblems(newPList, oldPList, limit, lastPoint, func(p *public.ProblemListItem) error {
+	lastPoint = DownloadProblems(newPList, oldPList, limit, lastPoint, func(p *ProblemListItem) error {
 		logger.Println("开始抓取题目 ", p.Pid)
 		p.Data = nil
-		page, err := public.GetDocument(nil, `http://uoj.ac/problem/`+p.Pid)
+		page, err := GetDocument(nil, `http://uoj.ac/problem/`+p.Pid)
 		if err != nil {
 			return fmt.Errorf("下载题面失败: %v", err)
 		}
@@ -99,8 +100,8 @@ func Update(limit int) (public.FileList, error) {
 		if len(x.Nodes) == 0 {
 			return errParsingProblem
 		}
-		p.Data = &public.Problem{}
-		html := public.Node2html(x.Nodes[0])
+		p.Data = &Problem{}
+		html := Node2html(x.Nodes[0])
 		html = strings.Replace(html, `<article class="top-buffer-md">`, "", -1)
 		html = strings.Replace(html, `</article>`, "", -1)
 		rule := regexp.MustCompile(`<h3>.+?</h3>`)
@@ -132,7 +133,7 @@ func Update(limit int) (public.FileList, error) {
 			}
 		}
 		p.Data.Description = "# 题目描述\n\n" + html
-		t, err := public.DownloadImage(nil, p.Data.Description, homePath+p.Pid+"/img/", fileList, "http://uoj.ac/problem/"+p.Pid+"/", "http://uoj.ac")
+		t, err := DownloadImage(nil, p.Data.Description, homePath+p.Pid+"/img/", fileList, "http://uoj.ac/problem/"+p.Pid+"/", "http://uoj.ac")
 		if err == nil {
 			p.Data.Description = t
 		}
@@ -146,7 +147,7 @@ func Update(limit int) (public.FileList, error) {
 		}
 		return nil
 	})
-	err = public.WriteFiles(newPList, fileList, homePath)
+	err = WriteFiles(newPList, fileList, homePath)
 	if err != nil {
 		return nil, err
 	}
@@ -159,4 +160,32 @@ func Update(limit int) (public.FileList, error) {
 
 func Stop() {
 	logger.Println("UniversalOJ crawler stopped")
+}
+
+func main() {
+	conn, err := grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	c := rpc.NewAPIClient(conn)
+	err = Start()
+	if err != nil {
+		log.Panicln(err)
+	}
+	r, err := c.Register(context.Background(), &rpc.RegisterRequest{Id: PID, Name: "UniversalOJ"})
+	if err != nil {
+		log.Fatalf("could not register: %v", err)
+	}
+	log.Println(r.DebugMode)
+	file, err := Update(5)
+	if err != nil {
+		log.Println("Error")
+	}
+	r2, err := c.Update(context.Background(), &rpc.UpdateRequest{Id: PID, File: file})
+	if err != nil {
+		log.Fatalf("could not update: %v", err)
+	}
+	log.Println(r2.Ok)
+
 }

@@ -2,43 +2,56 @@
 
 本项目为 OI-Archive 的题库爬虫。
 
+项目分为一个主服务和若干组件，每个组件负责一个题库。主服务和组件间使用 grpc 连接。
 
 
- ## 编译运行
+
+ ## 编译
+
+首先安装 protobuf
 
 ```shell
 sudo apt install golang-go
 go get github.com/oi-archive/crawler
 cd ~/go/src/github.com/oi-archive/crawler
 make
-./crawler
 ```
 
 
 
-## 插件 API
+### 运行
 
-每个题库的爬虫都以插件的形式被爬虫主程序调用，具体的格式如下
+* 启动主服务 `./crawler`
+* 分别运行 `plugin` 目录中的所有组件
 
-#### Go
 
-对于 go 语言，需要实现以下接口，然后以 plugin 模式编译，即可正常被主程序调用。
 
-```go
-func Name() string // 返回题库名称
-func Start(logg *log.Logger)  // 在且仅在插件初始化时被调用一次
+## 开发指南
 
-// 每次主程序要求爬虫进行一次更新时会被调用
-// limit: 主程序希望爬虫这一次爬取的题目数量（非严格要求，爬虫可以自行决定到底爬几题）
-// public.Filelist: map[string][]byte 类型，表示这次更新的文件列表，key表示文件的完整路径名，value表示文件内容
-// error: 本次爬虫运行是否出现致命错误。若非空则主程序将忽略这次爬取的结果。
-func Update(limit int) (public.FileList, error) 
+主服务提供的 API 见 `rpc/api.proto` （相信大家都能看懂 protobuf 文件，即使看不懂也没关系，可以看下面的各语言示例）
 
-func Stop() // 可能在插件关闭时被调用
+#### Go 
+
+把 `plugin/example-go`复制一份，然后在标记了 `TODO: ` 的位置编写你的代码。
+
+### Python3
+
+环境准备：
+
+```shell
+pip3 install grpcio
+pip3 install grpcio-tools
+pip3 install apscheduler
 ```
 
+把 `plugin/example-python`复制一份，进入新的目录
 
+```shell
+python3 -m grpc_tools.protoc -I../../rpc/ --python_out=. --grpc_python_out=. ../../rpc/api.proto
+```
 
-#### 其他语言
+然后在标记了 `TODO: ` 的位置编写你的代码。
 
-对于其他语言，你只需要用你喜欢的方式实现上面的几个接口，然后导出为 C 语言格式的库文件即可。
+### 其他语言
+
+如果需要用其他语言开发爬虫，请联系 @WAAutoMaton 获取技术支持。
