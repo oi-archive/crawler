@@ -106,7 +106,7 @@ func Update(limit int) (FileList, error) {
 		html = strings.Replace(html, `</article>`, "", -1)
 		rule := regexp.MustCompile(`<h3>.+?</h3>`)
 		html = rule.ReplaceAllStringFunc(html, func(x string) string {
-			return "# " + x[4:len(x)-5] + "\n\n"
+			return "\n# " + x[4:len(x)-5] + "\n\n"
 		})
 		rule = regexp.MustCompile(`时间限制(?:</strong>)*：(?:</strong>)*\$(.+?)\\texttt{s}\$`)
 		match := rule.FindStringSubmatch(html)
