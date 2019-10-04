@@ -1,8 +1,8 @@
 package main
 
 import (
+	. "crawler/plugin/public"
 	"fmt"
-	. "github.com/oi-archive/crawler/plugin/public"
 	"log"
 	"strconv"
 	"strings"

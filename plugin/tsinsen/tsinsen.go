@@ -3,7 +3,7 @@
 package main
 
 import (
-	. "github.com/oi-archive/crawler/plugin/public"
+	. "crawler/plugin/public"
 	"log"
 	"regexp"
 	"strconv"

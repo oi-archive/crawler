@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	. "crawler/plugin/public"
+	"crawler/rpc"
 	"fmt"
-	. "github.com/oi-archive/crawler/plugin/public"
-	"github.com/oi-archive/crawler/rpc"
 	"google.golang.org/grpc"
 	"log"
 	"os"
@@ -21,7 +21,6 @@ var logger *log.Logger
 var fileList map[string][]byte
 
 var oldPList map[string]bool
-var lastPoint string
 
 func Start() error {
 	logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
@@ -30,7 +29,6 @@ func Start() error {
 	if err != nil {
 		return err
 	}
-	lastPoint = ""
 	logger.Println("UniversalOJ crawler started")
 	return nil
 }

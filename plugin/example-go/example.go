@@ -3,8 +3,8 @@ package main
 import (
 	"bufio"
 	"context"
-	. "github.com/oi-archive/crawler/plugin/public"
-	"github.com/oi-archive/crawler/rpc"
+	. "crawler/plugin/public"
+	"crawler/rpc"
 	"github.com/robfig/cron"
 	"google.golang.org/grpc"
 	"log"

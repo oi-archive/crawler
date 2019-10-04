@@ -1,9 +1,9 @@
 package syzoj
 
 import (
+	. "crawler/plugin/public"
 	"encoding/json"
 	"fmt"
-	"github.com/oi-archive/crawler/plugin/public"
 	"io/ioutil"
 	"log"
 	"strconv"
@@ -33,7 +33,7 @@ type SYZOJ struct {
 	fullName  string
 	homeUrl   string
 	logger    *log.Logger
-	fileList  public.FileList
+	fileList  FileList
 	oldPList  map[string]bool
 	lastPoint string
 }
@@ -44,7 +44,7 @@ func (c *SYZOJ) Start(logg *log.Logger, hp string, fn string, hu string) error {
 	c.homeUrl = hu
 	c.logger = logg
 	c.oldPList = make(map[string]bool)
-	err := public.InitPList(c.oldPList, c.homePath)
+	err := InitPList(c.oldPList, c.homePath)
 	if err != nil {
 		return err
 	}
@@ -56,10 +56,10 @@ func (c *SYZOJ) Start(logg *log.Logger, hp string, fn string, hu string) error {
 /* 执行一次题库爬取
  * limit: 一次最多爬取题目数
  */
-func (c *SYZOJ) Update(limit int) (public.FileList, error) {
+func (c *SYZOJ) Update(limit int) (FileList, error) {
 	c.logger.Printf("Updating %s", c.fullName)
 	c.fileList = make(map[string][]byte)
-	problemPage, err := public.GetDocument(nil, c.homeUrl+"/problems")
+	problemPage, err := GetDocument(nil, c.homeUrl+"/problems")
 	if err != nil {
 		return nil, err
 	}
@@ -78,15 +78,15 @@ func (c *SYZOJ) Update(limit int) (public.FileList, error) {
 	if maxPage <= 0 || maxPage >= 500 {
 		return nil, fmt.Errorf("maxPage error: %d", maxPage)
 	}
-	newPList := make([]public.ProblemListItem, 0)
+	newPList := make([]ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
-		problemListPage, err := public.GetDocument(nil, fmt.Sprintf("%s/problems?page=%d", c.homeUrl, i))
+		problemListPage, err := GetDocument(nil, fmt.Sprintf("%s/problems?page=%d", c.homeUrl, i))
 		if err != nil {
 			return nil, err
 		}
 		list := problemListPage.Find(`[style^=vertical-align]`)
 		for j := range list.Nodes {
-			p := public.ProblemListItem{Title: strings.Replace(list.Eq(j).Text(), "\n", "", -1)}
+			p := ProblemListItem{Title: strings.Replace(list.Eq(j).Text(), "\n", "", -1)}
 			node := list.Nodes[j]
 			for _, k := range node.Attr {
 				if k.Key == "href" {
@@ -98,8 +98,8 @@ func (c *SYZOJ) Update(limit int) (public.FileList, error) {
 		}
 	}
 	c.logger.Println(len(newPList))
-	c.lastPoint = public.DownloadProblems(newPList, c.oldPList, limit, c.lastPoint, c.getProblem)
-	err = public.WriteFiles(newPList, c.fileList, c.homePath)
+	c.lastPoint = DownloadProblems(newPList, c.oldPList, limit, c.lastPoint, c.getProblem)
+	err = WriteFiles(newPList, c.fileList, c.homePath)
 	if err != nil {
 		return nil, err
 	}
@@ -114,10 +114,10 @@ func (c *SYZOJ) Stop() {
 	c.logger.Println(c.fullName + " crawler stopped")
 }
 
-func (c *SYZOJ) getProblem(i *public.ProblemListItem) error {
+func (c *SYZOJ) getProblem(i *ProblemListItem) error {
 	c.logger.Println("start getting problem ", i.Pid)
 	i.Data = nil
-	res, err := public.SafeGet(nil, fmt.Sprintf("%s/problem/%s/export", c.homeUrl, i.Pid))
+	res, err := SafeGet(nil, fmt.Sprintf("%s/problem/%s/export", c.homeUrl, i.Pid))
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (c *SYZOJ) getProblem(i *public.ProblemListItem) error {
 	if !data.Success {
 		return err
 	}
-	i.Data = &public.Problem{}
+	i.Data = &Problem{}
 	i.Data.DescriptionType = "markdown"
 	i.Data.Title = i.Title
 	i.Data.Time = data.Obj.TimeLimit
@@ -177,7 +177,7 @@ func (c *SYZOJ) getProblem(i *public.ProblemListItem) error {
 %s
 
 `, data.Obj.Description, data.Obj.InputFormat, data.Obj.OutputFormat, data.Obj.Example, data.Obj.LimitAndHint)
-	t, err := public.DownloadImage(nil, i.Data.Description, c.homePath+i.Pid+"/img/", c.fileList, c.homeUrl+"/problem/"+i.Pid+"/", c.homeUrl)
+	t, err := DownloadImage(nil, i.Data.Description, c.homePath+i.Pid+"/img/", c.fileList, c.homeUrl+"/problem/"+i.Pid+"/", c.homeUrl)
 	if err == nil {
 		i.Data.Description = t
 	}

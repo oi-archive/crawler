@@ -2,10 +2,10 @@ package main
 
 import (
 	"context"
+	"crawler/rpc"
 	"encoding/json"
 	"fmt"
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/oi-archive/crawler/rpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"gopkg.in/libgit2/git2go.v26"

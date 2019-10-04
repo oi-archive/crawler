@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/oi-archive/crawler/plugin/public"
-	"github.com/oi-archive/crawler/plugin/syzoj"
+	"crawler/plugin/public"
+	"crawler/plugin/syzoj"
 	"log"
 )
 

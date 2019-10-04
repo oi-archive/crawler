@@ -1,10 +1,10 @@
 package main
 
 import (
+	. "crawler/plugin/public"
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
-	. "github.com/oi-archive/crawler/plugin/public"
 	"io/ioutil"
 	"log"
 	"net/http"
