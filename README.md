@@ -10,10 +10,12 @@
 
 首先安装 protobuf
 
+然后执行
+
 ```shell
 sudo apt install golang-go
-go get github.com/oi-archive/crawler
-cd ~/go/src/github.com/oi-archive/crawler
+git clone https://github.com/oi-archive/crawler
+cd crawler
 make
 ```
 
