@@ -89,7 +89,7 @@ func Update(limit int) (FileList, error) {
 			newPList = append(newPList, p)
 		}
 	}
-	lastPoint = DownloadProblems(newPList, oldPList, limit, lastPoint, func(p *ProblemListItem) error {
+	DownloadProblems(newPList, oldPList, limit, func(p *ProblemListItem) error {
 		logger.Println("开始抓取题目 ", p.Pid)
 		p.Data = nil
 		page, err := GetDocument(nil, `http://uoj.ac/problem/`+p.Pid)

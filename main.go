@@ -13,6 +13,7 @@ import (
 	"log"
 	"net"
 	"plugin"
+	"sync"
 	"time"
 )
 
@@ -28,9 +29,14 @@ var sshkey Sshkey
 
 func try(x interface{}, err error) interface{} {
 	return x
+
 }
 
+var gitMutex sync.Mutex
+
 func addFileAndCommit(fileList map[string][]byte, problemsetName string) error {
+	gitMutex.Lock()
+	defer gitMutex.Unlock()
 	sig := &git.Signature{
 		Name:  "OI-Archive Crawler",
 		Email: "null",
@@ -89,6 +95,8 @@ func addFileAndCommit(fileList map[string][]byte, problemsetName string) error {
 }
 
 func gitPush() error {
+	gitMutex.Lock()
+	defer gitMutex.Unlock()
 	remote, err := gitRepo.Remotes.Lookup("origin")
 	if err != nil {
 		return err

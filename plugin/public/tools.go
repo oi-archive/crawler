@@ -13,6 +13,7 @@ import (
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -258,7 +259,7 @@ func WriteFiles(pList ProblemList, fileList FileList, homePath string) error {
 	return nil
 }
 
-func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int, lastPoint string, getProblem func(*ProblemListItem) error) string {
+func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int, getProblem func(*ProblemListItem) error) {
 	f := func(i *ProblemListItem) (err error) {
 		defer func() {
 			if perr := recover(); perr != nil {
@@ -272,10 +273,18 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 	if limit > len(newPList) {
 		limit = len(newPList)
 	}
+	if limit == 0 {
+		return
+	}
+	b := make([]bool, len(newPList))
+	for i := range b {
+		b[i] = true
+	}
 	cnt := 0
 	for k := range newPList {
 		i := &newPList[k]
 		if _, ok := oldPList[i.Pid]; !ok {
+			b[k] = false
 			cnt++
 			err := f(i)
 			if err != nil {
@@ -284,27 +293,19 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 			}
 		}
 	}
-	start := -1
-	for k := range newPList {
-		if newPList[k].Pid == lastPoint {
-			start = k
-			break
+	for cnt < limit {
+		i := rand.Intn(len(newPList))
+		if !b[i] {
+			continue
 		}
-	}
-	for k := start + 1; k != start && cnt < limit; k++ {
-		if k >= len(newPList) {
-			k = 0
-		}
-		i := &newPList[k]
-		lastPoint = i.Pid
+		b[i] = false
 		cnt++
-		err := f(i)
+		err := f(&newPList[i])
 		if err != nil {
-			i.Data = nil
-			log.Printf("爬取题目%s时出现错误:%v", i.Pid, err)
+			newPList[i].Data = nil
+			log.Printf("爬取题目%s时出现错误:%v", newPList[i].Pid, err)
 		}
 	}
-	return lastPoint
 }
 
 func InitPList(oldPList map[string]bool, homePath string) error {
