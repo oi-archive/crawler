@@ -203,4 +203,5 @@ func main() {
 	cr := cron.New()
 	_ = cr.AddFunc("@midnight", runUpdate) //TODO: 设置更新周期
 	cr.Start()
+	select {}
 }
