@@ -8,12 +8,12 @@
 
  ## 编译
 
-首先安装 protobuf
+首先安装 protoc 和 protoc-gen-go
 
 然后执行
 
 ```shell
-sudo apt install golang-go
+sudo apt install golang-go libgit2-dev
 git clone https://github.com/oi-archive/crawler
 cd crawler
 make
@@ -32,7 +32,7 @@ make
 
 主服务提供的 API 见 `rpc/api.proto` （相信大家都能看懂 protobuf 文件，即使看不懂也没关系，可以看下面的各语言示例）
 
-#### Go 
+### Go 
 
 把 `plugin/example-go`复制一份，然后在标记了 `TODO: ` 的位置编写你的代码。
 
@@ -41,9 +41,7 @@ make
 环境准备：
 
 ```shell
-pip3 install grpcio
-pip3 install grpcio-tools
-pip3 install apscheduler
+pip3 install grpcio grpcio-tools apscheduler
 ```
 
 把 `plugin/example-python`复制一份，进入新的目录
