@@ -5,6 +5,7 @@ import (
 	. "crawler/plugin/public"
 	"crawler/rpc"
 	"fmt"
+	"github.com/robfig/cron"
 	"google.golang.org/grpc"
 	"log"
 	"os"
@@ -16,11 +17,14 @@ import (
 const PID = "uoj"
 const homePath = PID + "/"
 
+var client rpc.APIClient
 var logger *log.Logger
 
 var fileList map[string][]byte
 
 var oldPList map[string]bool
+
+var debugMode bool
 
 func Start() error {
 	logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
@@ -33,7 +37,11 @@ func Start() error {
 	return nil
 }
 
-func Update(limit int) (FileList, error) {
+func Update() (FileList, error) {
+	limit := 50
+	if debugMode {
+		limit = 5
+	}
 	logger.Println("Updating UniversalOJ")
 	fileList = make(FileList)
 	problemPage, err := GetDocument(nil, "http://uoj.ac/problems")
@@ -160,30 +168,39 @@ func Stop() {
 	logger.Println("UniversalOJ crawler stopped")
 }
 
+func runUpdate() {
+	file, err := Update()
+	if err != nil {
+		log.Println("Update Error")
+		return
+	}
+	r, err := client.Update(context.Background(), &rpc.UpdateRequest{Id: PID, File: file})
+	if err != nil {
+		log.Printf("Submit update failed: %v", err)
+	}
+	if !r.Ok {
+		log.Println("Submit update failed")
+	}
+}
 func main() {
 	conn, err := grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
 	}
 	defer conn.Close()
-	c := rpc.NewAPIClient(conn)
+	client = rpc.NewAPIClient(conn)
 	err = Start()
 	if err != nil {
 		log.Panicln(err)
 	}
-	r, err := c.Register(context.Background(), &rpc.RegisterRequest{Id: PID, Name: "UniversalOJ"})
+	r, err := client.Register(context.Background(), &rpc.RegisterRequest{Id: PID, Name: "UniversalOJ"})
 	if err != nil {
 		log.Fatalf("could not register: %v", err)
 	}
-	log.Println(r.DebugMode)
-	file, err := Update(5)
-	if err != nil {
-		log.Println("Error")
-	}
-	r2, err := c.Update(context.Background(), &rpc.UpdateRequest{Id: PID, File: file})
-	if err != nil {
-		log.Fatalf("could not update: %v", err)
-	}
-	log.Println(r2.Ok)
 
+	debugMode = r.DebugMode
+	runUpdate()
+	cr := cron.New()
+	_ = cr.AddFunc("@midnight", runUpdate) //TODO: 设置更新周期
+	cr.Start()
 }
