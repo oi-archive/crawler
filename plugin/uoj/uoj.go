@@ -1,6 +1,7 @@
 package main
 
 import (
+	"time"
 	"context"
 	. "crawler/plugin/public"
 	"crawler/rpc"
@@ -185,7 +186,11 @@ func runUpdate() {
 func main() {
 	conn, err := grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
 	if err != nil {
-		log.Fatalf("did not connect: %v", err)
+        time.Sleep(time.Second*10)
+        conn, err = grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
+        if err!=nil {
+            log.Fatalf("did not connect: %v", err)
+        }
 	}
 	defer conn.Close()
 	client = rpc.NewAPIClient(conn)
