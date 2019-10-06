@@ -184,7 +184,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-	s := grpc.NewServer()
+    s := grpc.NewServer(grpc.MaxRecvMsgSize(1000000000), grpc.MaxSendMsgSize(1000000000))
 	rpc.RegisterAPIServer(s, &server{})
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {
