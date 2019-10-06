@@ -131,7 +131,7 @@ var plu map[string]*Plugin
 func (s *server) Register(c context.Context, req *rpc.RegisterRequest) (*rpc.RegisterReply, error) {
 	log.Println(req.Id, req.Name)
 	plu[req.Id] = &Plugin{id: req.Id, name: req.Name}
-	return &rpc.RegisterReply{DebugMode: true}, nil
+	return &rpc.RegisterReply{DebugMode: false}, nil
 }
 
 func (s *server) Deregister(c context.Context, req *rpc.DeregisterRequest) (*empty.Empty, error) {
