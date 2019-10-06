@@ -6,7 +6,6 @@ import (
 	. "crawler/plugin/public"
 	"crawler/rpc"
 	"fmt"
-	"github.com/robfig/cron"
 	"google.golang.org/grpc"
 	"log"
 	"os"
