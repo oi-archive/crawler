@@ -97,7 +97,9 @@ func Update() (FileList, error) {
 		}
 	}
 	DownloadProblems(newPList, oldPList, limit, func(p *ProblemListItem) error {
-		logger.Println("开始抓取题目 ", p.Pid)
+        if debugMode {
+            logger.Println("开始抓取题目 ", p.Pid)
+        }
 		p.Data = nil
 		page, err := GetDocument(nil, `http://uoj.ac/problem/`+p.Pid)
 		if err != nil {
@@ -177,11 +179,14 @@ func runUpdate() {
 	}
 	r, err := client.Update(context.Background(), &rpc.UpdateRequest{Id: PID, File: file})
 	if err != nil {
-		log.Printf("Submit update failed: %v", err)
+        log.Printf("Submit update failed: %v", err)
+        return
 	}
 	if !r.Ok {
-		log.Println("Submit update failed")
-	}
+        log.Println("Submit update failed")
+        return
+    }
+    log.Println("Submit update successfully")
 }
 func main() {
 	conn, err := grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
