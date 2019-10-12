@@ -26,6 +26,8 @@ var oldPList map[string]bool
 
 var debugMode bool
 
+var info *rpc.Info
+
 func Start() error {
 	logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
 	oldPList = make(map[string]bool)
@@ -176,7 +178,7 @@ func runUpdate() {
 		log.Println("Update Error")
 		return
 	}
-	r, err := client.Update(context.Background(), &rpc.UpdateRequest{Id: PID, File: file})
+	r, err := client.Update(context.Background(), &rpc.UpdateRequest{Info:info, File: file})
 	if err != nil {
         log.Printf("Submit update failed: %v", err)
         return
@@ -201,8 +203,9 @@ func main() {
 	err = Start()
 	if err != nil {
 		log.Panicln(err)
-	}
-	r, err := client.Register(context.Background(), &rpc.RegisterRequest{Id: PID, Name: "UniversalOJ"})
+    }
+    info=&rpc.Info{Id:PID,Name:"UniversalOJ"}
+	r, err := client.Register(context.Background(), &rpc.RegisterRequest{Info:info})
 	if err != nil {
 		log.Fatalf("could not register: %v", err)
 	}

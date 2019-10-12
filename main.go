@@ -5,7 +5,6 @@ import (
 	"crawler/rpc"
 	"encoding/json"
 	"fmt"
-	"github.com/golang/protobuf/ptypes/empty"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"gopkg.in/libgit2/git2go.v26"
@@ -121,25 +120,29 @@ func gitPush() error {
 
 type server struct{}
 
-type Plugin struct {
-	id   string
-	name string
-}
-
-var plu map[string]*Plugin
-
 func (s *server) Register(c context.Context, req *rpc.RegisterRequest) (*rpc.RegisterReply, error) {
-	log.Println(req.Id, req.Name)
-	plu[req.Id] = &Plugin{id: req.Id, name: req.Name}
+	log.Println(req.Info.Id, req.Info.Name)
 	return &rpc.RegisterReply{DebugMode: false}, nil
 }
 
-func (s *server) Deregister(c context.Context, req *rpc.DeregisterRequest) (*empty.Empty, error) {
-	return &empty.Empty{}, nil
+func (s *server) GetProblemlist(c context.Context, req *rpc.Info) (*rpc.GetProblemlistReply,error) {
+    b, err := ioutil.ReadFile("../source/" + req.Pid + "/problemlist.json")
+	if err != nil {
+		return &rpc.GetProblemlistReply{Ok:true,[]ProblemlistData{}},nil
+	}
+	x := ProblemList{}
+	err = json.Unmarshal(b, &x)
+	if err != nil {
+		return &rpc.GetProblemlistReply{Ok:false},nil
+	}
+	for _, i := range x {
+		oldPList[i.Pid] = true
+	}
+	return nil
 }
 
 func (s *server) Update(c context.Context, req *rpc.UpdateRequest) (*rpc.UpdateReply, error) {
-	err := addFileAndCommit(req.File, req.Id)
+	err := addFileAndCommit(req.File, req.Info.Id)
 	if err != nil {
 		log.Println("git error:", err)
 		currentBranch, err := gitRepo.Head()
@@ -179,7 +182,6 @@ func main() {
 	if err != nil {
 		log.Panicln(err)
 	}
-	plu = make(map[string]*Plugin)
 	lis, err := net.Listen("tcp", ":27381")
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)

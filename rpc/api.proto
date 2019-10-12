@@ -1,14 +1,17 @@
 syntax = "proto3";
 
-import "google/protobuf/empty.proto";
-
 package rpc;
 
 service API {
     // 组件启动时调用
-    rpc Register (Info) returns (RegisterReply) {}
+    rpc Register (RegisterRequest) returns (RegisterReply) {}
+    rpc GetProblemlist (Info) returns (GetProblemlistReply) {}
     // 组件向主服务提交更新时调用
     rpc Update (UpdateRequest) returns (UpdateReply) {}
+}
+
+message RegisterRequest {
+    Info info=1;
 }
 
 message Info {
@@ -20,6 +23,14 @@ message RegisterReply {
     bool debug_mode=1; // 当前是否为调试模式
 }
 
+message ProblemlistData {
+    string pid=1;
+    string title=2;
+}
+message GetProblemlistReply {
+    bool ok=1;
+    repeated ProblemlistData data=2;
+}
 
 message UpdateRequest {
     Info info=1;
