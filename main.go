@@ -153,6 +153,7 @@ func (s *server) GetProblemlist(c context.Context, req *rpc.Info) (*rpc.GetProbl
 }
 
 func (s *server) Update(c context.Context, req *rpc.UpdateRequest) (*rpc.UpdateReply, error) {
+	log.Println("Update is called:", req.Info.Name)
 	err := addFileAndCommit(req.File, req.Info.Id)
 	if err != nil {
 		log.Println("git error:", err)

@@ -1,9 +1,12 @@
 package syzoj
 
 import (
+	"context"
 	. "crawler/plugin/public"
+	"crawler/rpc"
 	"encoding/json"
 	"fmt"
+	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
 	"strconv"
@@ -29,39 +32,53 @@ type syzojExportProblem struct {
 }
 
 type SYZOJ struct {
-	homePath  string
-	fullName  string
+	info      *rpc.Info
+	client    rpc.APIClient
 	homeUrl   string
-	logger    *log.Logger
+	homePath  string
 	fileList  FileList
-	oldPList  map[string]bool
-	lastPoint string
+	oldPList  map[string]string
+	debugMode bool
+	conn      *grpc.ClientConn
 }
 
-func (c *SYZOJ) Start(logg *log.Logger, hp string, fn string, hu string) error {
-	c.homePath = hp
-	c.fullName = fn
+func (c *SYZOJ) Start(info *rpc.Info, hu string) error {
+	c.info = info
 	c.homeUrl = hu
-	c.logger = logg
-	c.oldPList = make(map[string]bool)
-	err := InitPList(c.oldPList, c.homePath)
+	c.homePath = c.info.Id + "/"
+	var err error
+	c.conn, err = grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	c.client = rpc.NewAPIClient(c.conn)
+	c.oldPList = make(map[string]string)
+	err = InitPList(c.oldPList, c.info, c.client)
 	if err != nil {
 		return err
 	}
-	c.lastPoint = ""
-	c.logger.Printf("%s crawler started", c.fullName)
+	log.Printf("%s crawler started", c.info.Name)
+	r, err := c.client.Register(context.Background(), &rpc.RegisterRequest{Info: info})
+	if err != nil {
+		log.Fatalf("could not register: %v", err)
+	}
+	log.Println("Is debug mode: ", r.DebugMode)
+	c.debugMode = r.DebugMode
 	return nil
 }
 
 /* 执行一次题库爬取
  * limit: 一次最多爬取题目数
  */
-func (c *SYZOJ) Update(limit int) (FileList, error) {
-	c.logger.Printf("Updating %s", c.fullName)
+func (c *SYZOJ) Update(limit int) error {
+	if c.debugMode {
+		limit = 5
+	}
+	log.Printf("Updating %s", c.info.Name)
 	c.fileList = make(map[string][]byte)
 	problemPage, err := GetDocument(nil, c.homeUrl+"/problems")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	list := problemPage.Find(".ui.pagination.menu")
 	maxPage := 0
@@ -76,13 +93,16 @@ func (c *SYZOJ) Update(limit int) (FileList, error) {
 		}
 	}
 	if maxPage <= 0 || maxPage >= 500 {
-		return nil, fmt.Errorf("maxPage error: %d", maxPage)
+		return fmt.Errorf("maxPage error: %d", maxPage)
+	}
+	if c.debugMode {
+		maxPage = 2
 	}
 	newPList := make([]ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
 		problemListPage, err := GetDocument(nil, fmt.Sprintf("%s/problems?page=%d", c.homeUrl, i))
 		if err != nil {
-			return nil, err
+			return err
 		}
 		list := problemListPage.Find(`[style^=vertical-align]`)
 		for j := range list.Nodes {
@@ -97,25 +117,38 @@ func (c *SYZOJ) Update(limit int) (FileList, error) {
 			newPList = append(newPList, p)
 		}
 	}
-	c.logger.Println(len(newPList))
-	c.lastPoint = DownloadProblems(newPList, c.oldPList, limit, c.lastPoint, c.getProblem)
+	log.Println(len(newPList))
+	DownloadProblems(newPList, c.oldPList, limit, c.getProblem)
 	err = WriteFiles(newPList, c.fileList, c.homePath)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	c.oldPList = make(map[string]bool)
+	c.oldPList = make(map[string]string)
 	for _, i := range newPList {
-		c.oldPList[i.Pid] = true
+		c.oldPList[i.Pid] = i.Title
 	}
-	return c.fileList, nil
+	r, err := c.client.Update(context.Background(), &rpc.UpdateRequest{Info: c.info, File: c.fileList})
+	if err != nil {
+		log.Printf("Submit update failed: %v", err)
+		return err
+	}
+	if !r.Ok {
+		log.Println("Submit update failed")
+		return err
+	}
+	log.Println("Submit update successfully")
+	return nil
 }
 
 func (c *SYZOJ) Stop() {
-	c.logger.Println(c.fullName + " crawler stopped")
+	c.conn.Close()
+	log.Println(c.info.Name + " crawler stopped")
 }
 
 func (c *SYZOJ) getProblem(i *ProblemListItem) error {
-	c.logger.Println("start getting problem ", i.Pid)
+	if c.debugMode {
+		log.Println("start getting problem ", i.Pid)
+	}
 	i.Data = nil
 	res, err := SafeGet(nil, fmt.Sprintf("%s/problem/%s/export", c.homeUrl, i.Pid))
 	if err != nil {

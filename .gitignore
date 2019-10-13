@@ -9,3 +9,6 @@ api_pb2.py
 *.swp
 *.swo
 plugin/uoj/uoj
+plugin/loj/loj
+plugin/guoj/guoj
+plugin/seuoj/seuoj

@@ -32,7 +32,6 @@ func Start() error {
 	logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
 	oldPList = make(map[string]string)
 	err := InitPList(oldPList, info, client)
-	log.Println(oldPList)
 	if err != nil {
 		return err
 	}

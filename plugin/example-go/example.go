@@ -1,21 +1,19 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	. "crawler/plugin/public"
 	"crawler/rpc"
-	"github.com/robfig/cron"
 	"google.golang.org/grpc"
 	"log"
-	"os"
-	"strings"
 )
 
 var client rpc.APIClient
 
 const PID = "example"     //TODO: 题库代号
 const NAME = "Example OJ" //TODO: 题库全名
+
+var info *rpc.Info
 
 var fileList map[string][]byte
 
@@ -45,7 +43,7 @@ func runUpdate() {
 		log.Println("Update Error")
 		return
 	}
-	r, err := client.Update(context.Background(), &rpc.UpdateRequest{Id: PID, File: file})
+	r, err := client.Update(context.Background(), &rpc.UpdateRequest{Info: info, File: file})
 	if err != nil {
 		log.Printf("Submit update failed: %v", err)
 	}
@@ -55,6 +53,7 @@ func runUpdate() {
 }
 
 func main() {
+	info = &rpc.Info{Id: PID, Name: NAME}
 	conn, err := grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("did not connect: %v", err)
@@ -65,25 +64,11 @@ func main() {
 	if err != nil {
 		log.Panicln(err)
 	}
-	r, err := client.Register(context.Background(), &rpc.RegisterRequest{Id: PID, Name: NAME})
+	r, err := client.Register(context.Background(), &rpc.RegisterRequest{Info: info})
 	if err != nil {
 		log.Fatalf("could not register: %v", err)
 	}
 	log.Println(r.DebugMode)
 	debugMode = r.DebugMode
 	runUpdate()
-	cr := cron.New()
-	_ = cr.AddFunc("@midnight", runUpdate) //TODO: 设置更新周期
-	cr.Start()
-	cin := bufio.NewReader(os.Stdin)
-	for {
-		line, _ := cin.ReadString('\n')
-		line = strings.Trim(line, "\r\t ")
-		if line == "exit" {
-			_, _ = client.Deregister(context.Background(), &rpc.DeregisterRequest{Id: PID})
-			return
-		} else {
-			log.Println("Unknown command")
-		}
-	}
 }

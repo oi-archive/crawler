@@ -1,31 +1,26 @@
 package main
 
 import (
-	"crawler/plugin/public"
 	"crawler/plugin/syzoj"
+	"crawler/rpc"
 	"log"
 )
 
-const homePath = "loj/"
-
-func Name() string {
-	return "LibreOJ"
-}
-
 var c *syzoj.SYZOJ
 
-func Start(logg *log.Logger) error {
-	c = &syzoj.SYZOJ{}
-	return c.Start(logg, homePath, Name(), "https://loj.ac")
-}
-
-/* 执行一次题库爬取
- * limit: 一次最多爬取题目数
- */
-func Update(limit int) (public.FileList, error) {
-	return c.Update(limit)
-}
-
 func Stop() {
+	c.Stop()
+}
+
+func main() {
+	c = &syzoj.SYZOJ{}
+	err := c.Start(&rpc.Info{Id: "loj", Name: "LibreOJ"}, "https://loj.ac")
+	if err != nil {
+		log.Panicln(err)
+	}
+	err = c.Update(200)
+	if err != nil {
+		log.Panicln(err)
+	}
 	c.Stop()
 }
