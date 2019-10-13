@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	. "crawler/plugin/public"
 	"crawler/rpc"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -18,6 +20,8 @@ import (
 
 var P []*plugin.Plugin
 var gitRepo *git.Repository
+
+var debugMode bool
 
 type Sshkey struct {
 	Public_key  string
@@ -122,23 +126,30 @@ type server struct{}
 
 func (s *server) Register(c context.Context, req *rpc.RegisterRequest) (*rpc.RegisterReply, error) {
 	log.Println(req.Info.Id, req.Info.Name)
-	return &rpc.RegisterReply{DebugMode: false}, nil
+	return &rpc.RegisterReply{DebugMode: debugMode}, nil
 }
 
-func (s *server) GetProblemlist(c context.Context, req *rpc.Info) (*rpc.GetProblemlistReply,error) {
-    b, err := ioutil.ReadFile("../source/" + req.Pid + "/problemlist.json")
+func (s *server) GetProblemlist(c context.Context, req *rpc.Info) (*rpc.GetProblemlistReply, error) {
+	b, err := ioutil.ReadFile("../source/" + req.Id + "/problemlist.json")
 	if err != nil {
-		return &rpc.GetProblemlistReply{Ok:true,[]ProblemlistData{}},nil
+		if debugMode {
+			log.Println(err)
+		}
+		return &rpc.GetProblemlistReply{Ok: true, Data: []*rpc.ProblemlistData{}}, nil
 	}
 	x := ProblemList{}
 	err = json.Unmarshal(b, &x)
 	if err != nil {
-		return &rpc.GetProblemlistReply{Ok:false},nil
+		if debugMode {
+			log.Println(err)
+		}
+		return &rpc.GetProblemlistReply{Ok: false}, nil
 	}
+	l := make([]*rpc.ProblemlistData, 0)
 	for _, i := range x {
-		oldPList[i.Pid] = true
+		l = append(l, &rpc.ProblemlistData{Pid: i.Pid, Title: i.Title})
 	}
-	return nil
+	return &rpc.GetProblemlistReply{Ok: true, Data: l}, nil
 }
 
 func (s *server) Update(c context.Context, req *rpc.UpdateRequest) (*rpc.UpdateReply, error) {
@@ -168,7 +179,12 @@ func (s *server) Update(c context.Context, req *rpc.UpdateRequest) (*rpc.UpdateR
 	return &rpc.UpdateReply{Ok: true}, nil
 }
 
+func parseFlag() {
+	flag.BoolVar(&debugMode, "debug", false, "Debug Mode")
+	flag.Parse()
+}
 func main() {
+	parseFlag()
 	var err error
 	gitRepo, err = git.OpenRepository("../source")
 	if err != nil {
@@ -186,7 +202,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
-    s := grpc.NewServer(grpc.MaxRecvMsgSize(1000000000), grpc.MaxSendMsgSize(1000000000))
+	s := grpc.NewServer(grpc.MaxRecvMsgSize(1000000000), grpc.MaxSendMsgSize(1000000000))
 	rpc.RegisterAPIServer(s, &server{})
 	reflection.Register(s)
 	if err := s.Serve(lis); err != nil {

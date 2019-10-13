@@ -5,6 +5,8 @@ package public
 
 import (
 	"bytes"
+	"context"
+	"crawler/rpc"
 	"crypto/md5"
 	"encoding/base64"
 	"encoding/json"
@@ -259,7 +261,7 @@ func WriteFiles(pList ProblemList, fileList FileList, homePath string) error {
 	return nil
 }
 
-func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int, getProblem func(*ProblemListItem) error) {
+func DownloadProblems(newPList ProblemList, oldPList map[string]string, limit int, getProblem func(*ProblemListItem) error) {
 	f := func(i *ProblemListItem) (err error) {
 		defer func() {
 			if perr := recover(); perr != nil {
@@ -283,7 +285,7 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 	cnt := 0
 	for k := range newPList {
 		i := &newPList[k]
-		if _, ok := oldPList[i.Pid]; !ok {
+		if title, ok := oldPList[i.Pid]; !ok || title != i.Title {
 			b[k] = false
 			cnt++
 			err := f(i)
@@ -308,18 +310,13 @@ func DownloadProblems(newPList ProblemList, oldPList map[string]bool, limit int,
 	}
 }
 
-func InitPList(oldPList map[string]bool, homePath string) error {
-	b, err := ioutil.ReadFile("../source/" + homePath + "problemlist.json")
+func InitPList(oldPList map[string]string, info *rpc.Info, client rpc.APIClient) error {
+	req, err := client.GetProblemlist(context.Background(), info)
 	if err != nil {
 		return err
 	}
-	x := ProblemList{}
-	err = json.Unmarshal(b, &x)
-	if err != nil {
-		return err
-	}
-	for _, i := range x {
-		oldPList[i.Pid] = true
+	for _, i := range req.Data {
+		oldPList[i.Pid] = i.Title
 	}
 	return nil
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"time"
 	"context"
 	. "crawler/plugin/public"
 	"crawler/rpc"
@@ -12,6 +11,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const PID = "uoj"
@@ -22,7 +22,7 @@ var logger *log.Logger
 
 var fileList map[string][]byte
 
-var oldPList map[string]bool
+var oldPList map[string]string
 
 var debugMode bool
 
@@ -30,8 +30,9 @@ var info *rpc.Info
 
 func Start() error {
 	logger = log.New(os.Stdout, "", log.Ldate|log.Ltime)
-	oldPList = make(map[string]bool)
-	err := InitPList(oldPList, homePath)
+	oldPList = make(map[string]string)
+	err := InitPList(oldPList, info, client)
+	log.Println(oldPList)
 	if err != nil {
 		return err
 	}
@@ -98,9 +99,9 @@ func Update() (FileList, error) {
 		}
 	}
 	DownloadProblems(newPList, oldPList, limit, func(p *ProblemListItem) error {
-        if debugMode {
-            logger.Println("开始抓取题目 ", p.Pid)
-        }
+		if debugMode {
+			logger.Println("开始抓取题目 ", p.Pid)
+		}
 		p.Data = nil
 		page, err := GetDocument(nil, `http://uoj.ac/problem/`+p.Pid)
 		if err != nil {
@@ -161,9 +162,9 @@ func Update() (FileList, error) {
 	if err != nil {
 		return nil, err
 	}
-	oldPList = make(map[string]bool)
+	oldPList = make(map[string]string)
 	for _, i := range newPList {
-		oldPList[i.Pid] = true
+		oldPList[i.Pid] = i.Title
 	}
 	return fileList, nil
 }
@@ -178,34 +179,34 @@ func runUpdate() {
 		log.Println("Update Error")
 		return
 	}
-	r, err := client.Update(context.Background(), &rpc.UpdateRequest{Info:info, File: file})
+	r, err := client.Update(context.Background(), &rpc.UpdateRequest{Info: info, File: file})
 	if err != nil {
-        log.Printf("Submit update failed: %v", err)
-        return
+		log.Printf("Submit update failed: %v", err)
+		return
 	}
 	if !r.Ok {
-        log.Println("Submit update failed")
-        return
-    }
-    log.Println("Submit update successfully")
+		log.Println("Submit update failed")
+		return
+	}
+	log.Println("Submit update successfully")
 }
 func main() {
 	conn, err := grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
 	if err != nil {
-        time.Sleep(time.Second*10)
-        conn, err = grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
-        if err!=nil {
-            log.Fatalf("did not connect: %v", err)
-        }
+		time.Sleep(time.Second * 10)
+		conn, err = grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
+		if err != nil {
+			log.Fatalf("did not connect: %v", err)
+		}
 	}
 	defer conn.Close()
+	info = &rpc.Info{Id: PID, Name: "UniversalOJ"}
 	client = rpc.NewAPIClient(conn)
 	err = Start()
 	if err != nil {
 		log.Panicln(err)
-    }
-    info=&rpc.Info{Id:PID,Name:"UniversalOJ"}
-	r, err := client.Register(context.Background(), &rpc.RegisterRequest{Info:info})
+	}
+	r, err := client.Register(context.Background(), &rpc.RegisterRequest{Info: info})
 	if err != nil {
 		log.Fatalf("could not register: %v", err)
 	}
