@@ -7,12 +7,10 @@ import grpc
 import api_pb2
 import api_pb2_grpc
 
-from datetime import datetime
-from apscheduler.schedulers.blocking import BlockingScheduler
-
 ID = "example" # TODO: 题库代号
 NAME = "Example OJ" # TODO: 题库全称 
 
+info=api_pb2.Info(id=ID,name=NAME)
 debug_mode = False
 
 stub=""
@@ -37,7 +35,7 @@ def stop():
 
 def runUpdate():
     global stub
-    stub.Update(api_pb2.UpdateRequest(id=ID,file=update()))
+    stub.Update(api_pb2.UpdateRequest(Info=info,file=update()))
 
 
 def run():
@@ -45,13 +43,9 @@ def run():
     channel = grpc.insecure_channel('127.0.0.1:27381')
     stub = api_pb2_grpc.APIStub(channel)
     start()
-    response = stub.Register(api_pb2.RegisterRequest(id=ID,name=NAME))
+    response = stub.Register(api_pb2.RegisterRequest(Info=info))
     debug_mode=response.debug_mode
     runUpdate()
-    scheduler = BlockingScheduler()
-    scheduler.add_job(runUpdate, 'cron', hour=0,minute=0,second=0)
-    scheduler.start()
-
     
 
 
