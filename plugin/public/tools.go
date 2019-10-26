@@ -262,11 +262,11 @@ func WriteFiles(pList ProblemList, fileList FileList, homePath string) error {
 }
 
 // 选定本次要更新的题目
-func ChooseUpdateProblem(newPList ProblemList, oldPList map[string]string, limit int) []string {
+func ChooseUpdateProblem(newPList ProblemList, oldPList map[string]string, limit int) ProblemList {
 	if limit > len(newPList) {
 		limit = len(newPList)
 	}
-	res := make([]string, 0)
+	res := make(ProblemList, 0)
 	if limit == 0 {
 		return res
 	}
@@ -280,7 +280,7 @@ func ChooseUpdateProblem(newPList ProblemList, oldPList map[string]string, limit
 		if title, ok := oldPList[i.Pid]; !ok || title != i.Title {
 			b[k] = false
 			cnt++
-			res = append(res, i.Pid)
+			res = append(res, *i)
 		}
 	}
 	for cnt < limit {
@@ -290,7 +290,7 @@ func ChooseUpdateProblem(newPList ProblemList, oldPList map[string]string, limit
 		}
 		b[i] = false
 		cnt++
-		res = append(res, newPList[i].Pid)
+		res = append(res, newPList[i])
 	}
 	return res
 }

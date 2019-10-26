@@ -1,6 +1,6 @@
-build: crawler plugin/uoj/uoj plugin/loj/loj plugin/seuoj/seuoj plugin/guoj/guoj
+build: crawler plugin/uoj/uoj plugin/loj/loj plugin/seuoj/seuoj plugin/guoj/guoj plugin/bzoj/bzoj
 clean:
-	rm crawler rpc/api.pb.go plugin/uoj/uoj plugin/loj/loj plugin/seuoj/seuoj plugin/guoj/guoj
+	rm crawler rpc/api.pb.go plugin/uoj/uoj plugin/loj/loj plugin/seuoj/seuoj plugin/guoj/guoj plugin/bzoj/bzoj
 crawler: main.go plugin/public/tools.go rpc/api.pb.go
 	go build ./
 rpc/api.pb.go: rpc/api.proto rpc/gen.go
@@ -13,5 +13,7 @@ plugin/guoj/guoj: plugin/guoj/guoj.go plugin/public/tools.go rpc/api.pb.go plugi
 	go build -o ./plugin/guoj/guoj ./plugin/guoj
 plugin/seuoj/seuoj: plugin/seuoj/seuoj.go plugin/public/tools.go rpc/api.pb.go plugin/syzoj/main.go
 	go build -o ./plugin/seuoj/seuoj ./plugin/seuoj
+plugin/bzoj/bzoj: plugin/bzoj/bzoj.go plugin/public/tools.go rpc/api.pb.go
+	go build -o ./plugin/bzoj/bzoj ./plugin/bzoj/
 .PHONY: build
 .IGNORE: clean
