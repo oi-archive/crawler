@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	. "crawler/plugin/public"
 	"crawler/rpc"
 	"encoding/json"
 	"fmt"
 	"github.com/PuerkitoBio/goquery"
+	"google.golang.org/grpc"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -237,10 +239,40 @@ func Update() (FileList, error) {
 	return fileList, nil
 }
 
-func Stop() {
-
+func runUpdate() {
+	file, err := Update()
+	if err != nil {
+		log.Println("Update Error")
+		return
+	}
+	r, err := client.Update(context.Background(), &rpc.UpdateRequest{Info: info, File: file})
+	if err != nil {
+		log.Printf("Submit update failed: %v", err)
+		return
+	}
+	if !r.Ok {
+		log.Println("Submit update failed")
+		return
+	}
+	log.Println("Submit update successfully")
 }
+func main() {
+	conn, err := grpc.Dial("127.0.0.1:27381", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("did not connect: %v", err)
+	}
+	defer conn.Close()
+	info = &rpc.Info{Id: PID, Name: NAME}
+	client = rpc.NewAPIClient(conn)
+	err = Start()
+	if err != nil {
+		log.Panicln(err)
+	}
+	r, err := client.Register(context.Background(), &rpc.RegisterRequest{Info: info})
+	if err != nil {
+		log.Fatalf("could not register: %v", err)
+	}
 
-func Name() string {
-	return "BZOJ"
+	debugMode = r.DebugMode
+	runUpdate()
 }
