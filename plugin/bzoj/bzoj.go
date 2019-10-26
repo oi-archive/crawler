@@ -158,7 +158,9 @@ func Update() (FileList, error) {
 		})
 	}
 	DownloadProblems(newPList, oldPList, limit, func(i *ProblemListItem) (err error) {
-		log.Println("start getting problem ", i.Pid)
+		if debugMode {
+			log.Println("start getting problem ", i.Pid)
+		}
 		i.Data = nil
 		page, err := GetDocument(c, `https://lydsy.com/JudgeOnline/problem.php?id=`+i.Pid)
 		if err != nil {
