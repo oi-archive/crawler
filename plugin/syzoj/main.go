@@ -111,6 +111,7 @@ func (c *SYZOJ) Update(limit int) error {
 			for _, k := range node.Attr {
 				if k.Key == "href" {
 					p.Pid = strings.Split(k.Val, "/")[2] //TODO: 异常未处理
+					p.Pid = strings.TrimSpace(p.Pid)
 					break
 				}
 			}
