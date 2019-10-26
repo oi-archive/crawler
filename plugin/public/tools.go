@@ -261,6 +261,40 @@ func WriteFiles(pList ProblemList, fileList FileList, homePath string) error {
 	return nil
 }
 
+// 选定本次要更新的题目
+func ChooseUpdateProblem(newPList ProblemList, oldPList map[string]string, limit int) []string {
+	if limit > len(newPList) {
+		limit = len(newPList)
+	}
+	res := make([]string, 0)
+	if limit == 0 {
+		return res
+	}
+	b := make([]bool, len(newPList))
+	for i := range b {
+		b[i] = true
+	}
+	cnt := 0
+	for k := range newPList {
+		i := &newPList[k]
+		if title, ok := oldPList[i.Pid]; !ok || title != i.Title {
+			b[k] = false
+			cnt++
+			res = append(res, i.Pid)
+		}
+	}
+	for cnt < limit {
+		i := rand.Intn(len(newPList))
+		if !b[i] {
+			continue
+		}
+		b[i] = false
+		cnt++
+		res = append(res, newPList[i].Pid)
+	}
+	return res
+}
+
 func DownloadProblems(newPList ProblemList, oldPList map[string]string, limit int, getProblem func(*ProblemListItem) error) {
 	f := func(i *ProblemListItem) (err error) {
 		defer func() {
