@@ -16,6 +16,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var client rpc.APIClient
@@ -34,13 +35,13 @@ type config struct {
 
 var cfg config
 
-func login(c *http.Client) error {
+func login(c *HttpConfig) error {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return err
 	}
-	c.Jar = jar
-	b, err := PostAndRead(c, "https://lydsy.com/JudgeOnline/login.php", url.Values{"user_id": {cfg.Username}, "password": {cfg.Password}})
+	c.Client.Jar = jar
+	b, err := PostFormAndRead(c, "https://lydsy.com/JudgeOnline/login.php", url.Values{"user_id": {cfg.Username}, "password": {cfg.Password}})
 	if err != nil {
 		return err
 	}
@@ -82,11 +83,6 @@ func Start() error {
 	if err != nil {
 		return err
 	}
-	c := &http.Client{Transport: newAddUATransport(nil)}
-	err = login(c)
-	if err != nil {
-		return err
-	}
 	log.Println("BZOJ crawler started")
 	return nil
 }
@@ -95,12 +91,13 @@ var fileList map[string][]byte
 
 func Update() (FileList, error) {
 	log.Println("Updating BZOJ")
-	limit := 50
+	limit := 200
 	if debugMode {
 		limit = 5
 	}
 	fileList = make(map[string][]byte)
-	c := &http.Client{Transport: newAddUATransport(nil)}
+	client := &http.Client{Transport: newAddUATransport(nil)}
+	c := &HttpConfig{Client: client, SleepTime: 100 * time.Millisecond}
 	err := login(c)
 	if err != nil {
 		return nil, err

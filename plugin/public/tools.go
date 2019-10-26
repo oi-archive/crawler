@@ -43,22 +43,32 @@ type ProblemList []ProblemListItem
 
 type FileList map[string][]byte
 
+type HttpConfig struct {
+	Client    *http.Client
+	SleepTime time.Duration
+}
+
+var DefaultHttpConfig = &HttpConfig{Client: nil, SleepTime: 100 * time.Millisecond}
+
 // SafeGet 是 http.Get 的简单封装，会在产生错误时重试 2 次，若重试全部失败，则返回最后一次的错误
-func SafeGet(c *http.Client, url string) (res *http.Response, err error) {
-	time.Sleep(50 * time.Millisecond)
+func SafeGet(c *HttpConfig, url string) (res *http.Response, err error) {
+	if c == nil {
+		c = DefaultHttpConfig
+	}
+	time.Sleep(c.SleepTime)
 	for i := 1; i <= 3; i++ {
-		if c == nil {
+		if c.Client == nil {
 			res, err = http.Get(url)
 		} else {
-			res, err = c.Get(url)
+			res, err = c.Client.Get(url)
 		}
 		if err != nil {
-			time.Sleep(time.Millisecond * 50)
+			time.Sleep(c.SleepTime)
 			continue
 		}
 		if res.StatusCode != 200 {
 			err = fmt.Errorf("get %s error,status code = %d", url, res.StatusCode)
-			time.Sleep(time.Millisecond * 50)
+			time.Sleep(c.SleepTime)
 			continue
 		}
 		return res, nil
@@ -66,18 +76,51 @@ func SafeGet(c *http.Client, url string) (res *http.Response, err error) {
 	return nil, err
 }
 
-// SafePost 是 http.Post 的简单封装，会在产生错误时重试 2 次，若重试全部失败，则返回最后一次的错误
-func SafePost(c *http.Client, url string, form url.Values) (res *http.Response, err error) {
-	time.Sleep(50 * time.Millisecond)
+// SafePost 是 http.PostForm 的简单封装，会在产生错误时重试 2 次，若重试全部失败，则返回最后一次的错误
+func SafePost(c *HttpConfig, url string, contentType string, data []byte) (res *http.Response, err error) {
+	if c == nil {
+		c = DefaultHttpConfig
+	}
+	time.Sleep(c.SleepTime)
 	for i := 1; i <= 3; i++ {
-		res, err = c.PostForm(url, form)
+		if c.Client == nil {
+			res, err = http.Post(url, contentType, bytes.NewReader(data))
+		} else {
+			res, err = c.Client.Post(url, contentType, bytes.NewReader(data))
+		}
 		if err != nil {
-			time.Sleep(time.Millisecond * 50)
+			time.Sleep(c.SleepTime)
 			continue
 		}
 		if res.StatusCode != 200 {
 			err = fmt.Errorf("post %s error,status code = %d", url, res.StatusCode)
-			time.Sleep(time.Millisecond * 50)
+			time.Sleep(c.SleepTime)
+			continue
+		}
+		return res, nil
+	}
+	return nil, err
+}
+
+// SafePostForm 是 http.PostForm 的简单封装，会在产生错误时重试 2 次，若重试全部失败，则返回最后一次的错误
+func SafePostForm(c *HttpConfig, url string, form url.Values) (res *http.Response, err error) {
+	if c == nil {
+		c = DefaultHttpConfig
+	}
+	time.Sleep(c.SleepTime)
+	for i := 1; i <= 3; i++ {
+		if c.Client == nil {
+			res, err = http.PostForm(url, form)
+		} else {
+			res, err = c.Client.PostForm(url, form)
+		}
+		if err != nil {
+			time.Sleep(c.SleepTime)
+			continue
+		}
+		if res.StatusCode != 200 {
+			err = fmt.Errorf("post %s error,status code = %d", url, res.StatusCode)
+			time.Sleep(c.SleepTime)
 			continue
 		}
 		return res, nil
@@ -86,7 +129,7 @@ func SafePost(c *http.Client, url string, form url.Values) (res *http.Response, 
 }
 
 // Download 用于下载一个 url 中的内容
-func Download(c *http.Client, url string) ([]byte, error) {
+func Download(c *HttpConfig, url string) ([]byte, error) {
 	res, err := SafeGet(c, url)
 	if err != nil {
 		return nil, err
@@ -95,8 +138,19 @@ func Download(c *http.Client, url string) ([]byte, error) {
 	return ioutil.ReadAll(res.Body)
 }
 
-func PostAndRead(c *http.Client, url string, form url.Values) ([]byte, error) {
-	res, err := SafePost(c, url, form)
+// Post 并返回 respose 的 body 的内容
+func PostAndRead(c *HttpConfig, url string, contentType string, data []byte) ([]byte, error) {
+	res, err := SafePost(c, url, contentType, data)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	return ioutil.ReadAll(res.Body)
+}
+
+// PostForm 并返回 respose 的 body 的内容
+func PostFormAndRead(c *HttpConfig, url string, form url.Values) ([]byte, error) {
+	res, err := SafePostForm(c, url, form)
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +159,7 @@ func PostAndRead(c *http.Client, url string, form url.Values) ([]byte, error) {
 }
 
 // 返回输入 url 的 goquery.Document
-func GetDocument(c *http.Client, url string) (*goquery.Document, error) {
+func GetDocument(c *HttpConfig, url string) (*goquery.Document, error) {
 	res, err := SafeGet(c, url)
 	if err != nil {
 		return nil, err
@@ -147,7 +201,7 @@ func CalcMD5(x string) string {
 // c http实例，不需要可置nil; text: 待解析的文档; prefix: 文件系统路径前缀;
 // fileList: 文件表; url1,url2: 文档链接和域名链接，用于相对路径的处理，若不需要则置空
 // 返回替换图片链接后的文档
-func DownloadImage(c *http.Client, text string, prefix string, fileList map[string][]byte, url1 string, url2 string) (string, error) {
+func DownloadImage(c *HttpConfig, text string, prefix string, fileList map[string][]byte, url1 string, url2 string) (string, error) {
 	rule := regexp.MustCompile(`!\[.*?]\((.+?)\)`)
 	r2 := regexp.MustCompile(`\(.+?\)`)
 	text = rule.ReplaceAllStringFunc(text, func(x string) string {
