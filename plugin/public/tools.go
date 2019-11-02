@@ -48,7 +48,7 @@ type HttpConfig struct {
 	SleepTime time.Duration
 }
 
-var DefaultHttpConfig = &HttpConfig{Client: nil, SleepTime: 100 * time.Millisecond}
+var DefaultHttpConfig = &HttpConfig{Client: nil, SleepTime: 200 * time.Millisecond}
 
 // SafeGet 是 http.Get 的简单封装，会在产生错误时重试 2 次，若重试全部失败，则返回最后一次的错误
 func SafeGet(c *HttpConfig, url string) (res *http.Response, err error) {
@@ -325,6 +325,7 @@ func WriteFiles(pList ProblemList, fileList FileList, homePath string) error {
 
 // 选定本次要更新的题目
 func ChooseUpdateProblem(newPList ProblemList, oldPList map[string]string, limit int) map[string]bool {
+	rand.Seed(time.Now().Unix())
 	if limit > len(newPList) {
 		limit = len(newPList)
 	}
@@ -352,6 +353,7 @@ func ChooseUpdateProblem(newPList ProblemList, oldPList map[string]string, limit
 }
 
 func DownloadProblems(newPList ProblemList, oldPList map[string]string, limit int, getProblem func(*ProblemListItem) error) {
+	rand.Seed(time.Now().Unix())
 	f := func(i *ProblemListItem) (err error) {
 		defer func() {
 			if perr := recover(); perr != nil {

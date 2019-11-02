@@ -228,7 +228,7 @@ func Update() (FileList, error) {
 
 %s
 `, res.Data.Problem.Content, res.Data.Problem.StandardInput, res.Data.Problem.StandardOutput, sample, res.Data.Problem.Constraints, res.Data.Problem.Note, res.Data.Problem.Source)
-		d2, err := DownloadImage(c, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://acm.uestc.edu.cn/problem/"+i.Pid+"/description", "https://acm.uestc.edu.cn")
+		d2, err := DownloadImage(c, i.Data.Description, homePath+i.Pid+"/img/", fileList, "https://acm.uestc.edu.cn/problem/"+i.Pid+"/description/", "https://acm.uestc.edu.cn")
 		if err == nil {
 			i.Data.Description = d2
 		}
