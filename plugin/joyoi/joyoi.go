@@ -91,7 +91,6 @@ func Update(info *rpc.Info, src string) (FileList, error) {
 	}
 	newPList := make([]ProblemListItem, 0)
 	for i := 1; i <= maxPage; i++ {
-		log.Println("start getting problemlist page ", i)
 		b, err = Download(nil, "http://api.oj.joyoi.cn/api/problem/all?tag=&title=&page="+strconv.Itoa(i))
 		check(err)
 		plRes = &ProblemListResponse{}
@@ -109,7 +108,7 @@ func Update(info *rpc.Info, src string) (FileList, error) {
 		if _, ok := uList[i.Pid]; !ok {
 			continue
 		}
-		if debugMode || true {
+		if debugMode {
 			log.Println("start getting problem ", i.Pid)
 		}
 		b, err = Download(nil, "http://api.oj.joyoi.cn/api/problem/"+i.Pid)
