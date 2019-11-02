@@ -132,8 +132,11 @@ func Update() (FileList, error) {
 		}
 	}
 	uList := ChooseUpdateProblem(newPList, oldPList, limit)
-	for k := range uList {
-		i := &uList[k]
+	for k := range newPList {
+		i := &newPList[k]
+		if _, ok := uList[i.Pid]; !ok {
+			continue
+		}
 		if debugMode {
 			log.Println("start getting problem ", i.Pid)
 		}
@@ -230,7 +233,7 @@ func Update() (FileList, error) {
 			i.Data.Description = d2
 		}
 	}
-	err = WriteFiles(uList, fileList, homePath)
+	err = WriteFiles(newPList, fileList, homePath)
 	if err != nil {
 		return nil, err
 	}

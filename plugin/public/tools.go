@@ -207,6 +207,10 @@ func DownloadImage(c *HttpConfig, text string, prefix string, fileList map[strin
 	text = rule.ReplaceAllStringFunc(text, func(x string) string {
 		match := r2.FindString(x)
 		match = match[1 : len(match)-1]
+		if len(match) > 1000 {
+			return x
+		}
+		matchBak := match
 		file, err := Download(c, match)
 		if err != nil {
 			if url1 != "" && match[0] != '/' {
@@ -217,7 +221,7 @@ func DownloadImage(c *HttpConfig, text string, prefix string, fileList map[strin
 				file, err = Download(c, match)
 			}
 			if err != nil {
-				log.Printf("download image %s error", match)
+				log.Printf("download image %s error", matchBak)
 				return x
 			}
 		}
@@ -243,6 +247,10 @@ func DownloadImage(c *HttpConfig, text string, prefix string, fileList map[strin
 		match2 := r2.FindString(x)
 		match := r3.FindString(match2)
 		match = match[1 : len(match)-1]
+		if len(match) > 1000 {
+			return x
+		}
+		matchBak := match
 		file, err := Download(c, match)
 		if err != nil {
 			if url1 != "" && match[0] != '/' {
@@ -253,7 +261,7 @@ func DownloadImage(c *HttpConfig, text string, prefix string, fileList map[strin
 				file, err = Download(c, match)
 			}
 			if err != nil {
-				log.Printf("download image %s error", match)
+				log.Printf("download image %s error", matchBak)
 				return x
 			}
 		}
@@ -316,35 +324,29 @@ func WriteFiles(pList ProblemList, fileList FileList, homePath string) error {
 }
 
 // 选定本次要更新的题目
-func ChooseUpdateProblem(newPList ProblemList, oldPList map[string]string, limit int) ProblemList {
+func ChooseUpdateProblem(newPList ProblemList, oldPList map[string]string, limit int) map[string]bool {
 	if limit > len(newPList) {
 		limit = len(newPList)
 	}
-	res := make(ProblemList, 0)
+	res := make(map[string]bool)
 	if limit == 0 {
 		return res
-	}
-	b := make([]bool, len(newPList))
-	for i := range b {
-		b[i] = true
 	}
 	cnt := 0
 	for k := range newPList {
 		i := &newPList[k]
 		if title, ok := oldPList[i.Pid]; !ok || title != i.Title {
-			b[k] = false
 			cnt++
-			res = append(res, *i)
+			res[i.Pid] = true
 		}
 	}
 	for cnt < limit {
 		i := rand.Intn(len(newPList))
-		if !b[i] {
+		if _, ok := res[newPList[i].Pid]; ok {
 			continue
 		}
-		b[i] = false
 		cnt++
-		res = append(res, newPList[i])
+		res[newPList[i].Pid] = true
 	}
 	return res
 }
