@@ -69,7 +69,7 @@ var fileList map[string][]byte
 
 func Update(info *rpc.Info, src string) (FileList, error) {
 	log.Println("Updating " + info.Name)
-	limit := 50
+	limit := 100
 	if debugMode {
 		limit = 5
 	}

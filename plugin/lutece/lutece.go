@@ -81,7 +81,7 @@ var fileList map[string][]byte
 
 func Update() (FileList, error) {
 	log.Println("Updating " + NAME)
-	limit := 50
+	limit := 200
 	if debugMode {
 		limit = 5
 	}
