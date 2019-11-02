@@ -221,7 +221,7 @@ func DownloadImage(c *HttpConfig, text string, prefix string, fileList map[strin
 				file, err = Download(c, match)
 			}
 			if err != nil {
-				log.Printf("download image %s error", matchBak)
+				log.Printf("Problem %s : download image %s error", url1, matchBak)
 				return x
 			}
 		}
@@ -261,7 +261,7 @@ func DownloadImage(c *HttpConfig, text string, prefix string, fileList map[strin
 				file, err = Download(c, match)
 			}
 			if err != nil {
-				log.Printf("download image %s error", matchBak)
+				log.Printf("Problem %s : download image %s error", url1, matchBak)
 				return x
 			}
 		}
