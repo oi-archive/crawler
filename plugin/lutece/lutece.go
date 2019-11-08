@@ -198,7 +198,7 @@ func Update() (FileList, error) {
 			sample += fmt.Sprintf("<tr><td>%s</td><td>%s</td></tr>", j.InputContent, j.OutputContent)
 		}
 		sample += "</table>\n"
-		i.Data.DescriptionType = "html"
+		i.Data.DescriptionType = "markdown"
 		i.Data.Description = fmt.Sprintf(`
 # Content
 
