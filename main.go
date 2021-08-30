@@ -7,21 +7,21 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/libgit2/git2go/v31"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
-	"gopkg.in/libgit2/git2go.v26"
 	"io/ioutil"
 	"log"
 	"net"
-	"plugin"
 	"sync"
 	"time"
 )
 
-var P []*plugin.Plugin
+//var P []*plugin.Plugin
 var gitRepo *git.Repository
 
 var debugMode bool
+var sourcePath string
 
 type Sshkey struct {
 	Public_key  string
@@ -106,9 +106,9 @@ func gitPush() error {
 	}
 	err = remote.Push([]string{"refs/heads/master"}, &git.PushOptions{
 		RemoteCallbacks: git.RemoteCallbacks{
-			CredentialsCallback: func(url string, username_from_url string, allowed_types git.CredType) (git.ErrorCode, *git.Cred) {
-				ret, cred := git.NewCredSshKey("git", sshkey.Public_key, sshkey.Private_key, "")
-				return git.ErrorCode(ret), &cred
+			CredentialsCallback: func(url string, username_from_url string, allowed_types git.CredType) (*git.Credential, error) {
+				cred, err := git.NewCredSshKey("git", sshkey.Public_key, sshkey.Private_key, "")
+				return cred, err
 			},
 			CertificateCheckCallback: func(cert *git.Certificate, valid bool, hostname string) git.ErrorCode {
 				// 忽略服务端证书错误
@@ -182,12 +182,13 @@ func (s *server) Update(c context.Context, req *rpc.UpdateRequest) (*rpc.UpdateR
 
 func parseFlag() {
 	flag.BoolVar(&debugMode, "debug", false, "Debug Mode")
+	flag.StringVar(&sourcePath, "source", "../source", "source repository Path")
 	flag.Parse()
 }
 func main() {
 	parseFlag()
 	var err error
-	gitRepo, err = git.OpenRepository("../source")
+	gitRepo, err = git.OpenRepository(sourcePath)
 	if err != nil {
 		log.Panicln(err)
 	}
